@@ -189,6 +189,7 @@ def pricing(request):
 
     user = request.user
     name = email = current_plan = batches = ""
+    current_level = current_price = None
     if user.is_authenticated:
         name = user.display_name
         email = user.email
@@ -197,16 +198,42 @@ def pricing(request):
             .select_related("batch", "plan")
         )
         if enrolls:
-            current_plan = max(enrolls, key=lambda e: e.plan.level).plan.name
+            top = max(enrolls, key=lambda e: e.plan.level)
+            current_plan = top.plan.name
+            current_level = top.plan.level
+            current_price = top.plan.price
             batches = ", ".join(sorted({e.batch.name for e in enrolls}))
 
     cards = []
     for p in plans:
-        price = f"₹{int(p.price):,}"
         term = f"{p.duration_months} Month" + ("s" if p.duration_months != 1 else "")
-        if user.is_authenticated:
+        is_current = current_level is not None and p.level == current_level
+        is_upgrade = current_level is not None and p.level > current_level
+        # Amount shown/charged: the difference to upgrade, else the full price.
+        amount_value = int(p.price - current_price) if is_upgrade else int(p.price)
+        full_price = f"₹{int(p.price):,}"
+
+        if is_upgrade:
             text = "\n".join([
-                f"Hi Fighter Bull's! I want to upgrade to *{p.name}* ({price} / {term}).",
+                f"Hi Fighter Bull's! I want to upgrade from *{current_plan}* to *{p.name}*.",
+                f"Upgrade amount (difference): ₹{amount_value:,}  (full {full_price} − {current_plan} ₹{int(current_price):,})",
+                "",
+                f"Name: {name or '-'}",
+                f"Email: {email or '-'}",
+                f"Current plan: {current_plan or '-'}",
+                f"Batch: {batches or '-'}",
+            ])
+        elif is_current:
+            text = "\n".join([
+                f"Hi Fighter Bull's! I'm on the *{p.name}* plan and have a question.",
+                "",
+                f"Name: {name or '-'}",
+                f"Email: {email or '-'}",
+                f"Batch: {batches or '-'}",
+            ])
+        elif user.is_authenticated:
+            text = "\n".join([
+                f"Hi Fighter Bull's! I'm interested in the *{p.name}* plan ({full_price} / {term}).",
                 "",
                 f"Name: {name or '-'}",
                 f"Email: {email or '-'}",
@@ -216,9 +243,19 @@ def pricing(request):
         else:
             text = (
                 f"Hi Fighter Bull's! I'm interested in the *{p.name}* course "
-                f"({price} / {term}). Please share the next steps."
+                f"({full_price} / {term}). Please share the next steps."
             )
         params = {"phone": phone, "text": text, "type": "phone_number", "app_absent": "0"}
-        cards.append({"plan": p, "wa_url": "https://api.whatsapp.com/send/?" + urlencode(params)})
+        cards.append({
+            "plan": p,
+            "wa_url": "https://api.whatsapp.com/send/?" + urlencode(params),
+            "is_current": is_current,
+            "is_upgrade": is_upgrade,
+            "amount_value": amount_value,
+        })
 
-    return render(request, "courses/pricing.html", {"plan_cards": cards})
+    return render(
+        request,
+        "courses/pricing.html",
+        {"plan_cards": cards, "current_plan": current_plan},
+    )

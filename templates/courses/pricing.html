@@ -11,17 +11,28 @@
 <div class="price-grid">
     {% for card in plan_cards %}
     <div class="price-card animate-up accent-{{ card.plan.accent }} {% if card.plan.is_highlighted %}highlight{% endif %}">
-        {% if card.plan.badge %}<div class="price-badge">{{ card.plan.badge }}</div>{% endif %}
+        {% if card.is_current %}<div class="price-badge">★ Your plan</div>
+        {% elif card.plan.badge %}<div class="price-badge">{{ card.plan.badge }}</div>{% endif %}
         <div class="price-name">{{ card.plan.name }}</div>
+        {% if card.is_current %}
+        <div class="price-amount" style="font-size:1.4rem;">✓ Current plan</div>
+        <div class="price-term">{{ card.plan.duration_months }} MONTH{{ card.plan.duration_months|pluralize:",S" }}</div>
+        {% elif card.is_upgrade %}
+        <div class="price-amount"><span class="cur">₹</span>{{ card.amount_value|intcomma }}</div>
+        <div class="price-term">to upgrade from {{ current_plan }} · full {{ card.plan.price|floatformat:0|intcomma }}</div>
+        {% else %}
         <div class="price-amount"><span class="cur">₹</span>{{ card.plan.price|floatformat:0|intcomma }}</div>
         <div class="price-term">{{ card.plan.duration_months }} MONTH{{ card.plan.duration_months|pluralize:",S" }}</div>
+        {% endif %}
         <ul class="price-features">
             {% for f in card.plan.feature_list %}
             <li><span class="tick">✓</span> {{ f }}</li>
             {% endfor %}
         </ul>
         <a class="price-cta" href="{{ card.wa_url }}" target="_blank" rel="noopener">
-            {% if user.is_authenticated %}💬 Upgrade on WhatsApp{% else %}💬 Enquire on WhatsApp{% endif %}</a>
+            {% if card.is_current %}💬 Contact on WhatsApp
+            {% elif card.is_upgrade %}💬 Upgrade for ₹{{ card.amount_value|intcomma }}
+            {% else %}💬 Enquire on WhatsApp{% endif %}</a>
     </div>
     {% empty %}
     <div class="empty">Plans will appear here once your admin adds them.</div>
