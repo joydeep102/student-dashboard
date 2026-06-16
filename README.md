@@ -14,6 +14,10 @@ Runs the app with **PostgreSQL + Gunicorn + WhiteNoise** (static files) — no
 local Python setup needed.
 
 ```bash
+# 0. clone
+git clone git@github.com:joydeep102/student-dashboard.git
+cd student-dashboard
+
 # 1. (optional) copy env defaults and edit secrets
 cp .env.example .env        # then set DJANGO_SECRET_KEY, POSTGRES_PASSWORD, hosts
 
@@ -243,6 +247,47 @@ secrets/       Google OAuth client secret & cached token (git-ignored)
 ```
 
 ---
+
+## Troubleshooting
+
+### "Sign in with Google" — `Error 400: redirect_uri_mismatch`
+The app sends the redirect URI from `secrets/google_login.json` (or the
+`GOOGLE_LOGIN_REDIRECT_URI` env var) to Google, and it must match an
+**Authorized redirect URI** on the OAuth **Web** client *exactly* (scheme, host,
+path, trailing slash). For production set it to your real domain:
+
+```json
+{ "client_id": "…", "client_secret": "…",
+  "redirect_uri": "https://YOUR-DOMAIN/accounts/google/callback/" }
+```
+
+Then add that same URL under *APIs & Services → Credentials → (your Web client)
+→ Authorized redirect URIs* in the Google Cloud Console. `secrets/` is a mounted
+volume, so after editing the JSON just `docker compose restart web`.
+
+### "Google sign-in failed. Please try again." (after the consent screen)
+This is the server-side token exchange failing. The app sets
+`OAUTHLIB_RELAX_TOKEN_SCOPE=1` so Google adding the `openid` scope doesn't break
+the exchange, and logs the real cause. If it still fails, check the traceback:
+
+```bash
+docker compose logs --tail=60 web      # look for "token exchange failed"
+```
+
+Behind an HTTPS reverse proxy, make sure it forwards `X-Forwarded-Proto: https`
+(the callback is built from the configured https redirect URI).
+
+### Trainer can't start a live class
+The trainer's **▶ Start class** button only appears on a batch's **scheduled
+weekday** (admin sets these under *Batch → Weekly class days*). On any other day
+the console shows "No class scheduled for today" — this is by design. Add a
+schedule slot for the desired weekday in the admin to enable it. Note that
+without Google connected, no Meet link is auto-generated — the trainer pastes one
+into the optional field when starting the class.
+
+### `docker compose … : no configuration file provided: not found`
+You're not in the project directory. `cd` to the folder containing
+`docker-compose.yml` first, or pass `-f /path/to/docker-compose.yml`.
 
 ## Going to production (checklist)
 
