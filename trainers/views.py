@@ -1,3 +1,4 @@
+import datetime
 from functools import wraps
 
 from django.contrib import messages
@@ -96,6 +97,20 @@ def live(request):
         if lc.live_state in ("live", "upcoming"):
             live_by_batch.setdefault(lc.batch_id, []).append(lc)
 
+    # Upcoming scheduled classes (future, any day) so the trainer can see what's
+    # already booked and avoid double-scheduling.
+    now = timezone.now()
+    upcoming = (
+        LiveClass.objects.filter(
+            batch__in=batches, status=LiveClass.Status.SCHEDULED, start_time__gt=now
+        )
+        .select_related("batch")
+        .order_by("start_time")
+    )
+    upcoming_by_batch = {}
+    for lc in upcoming:
+        upcoming_by_batch.setdefault(lc.batch_id, []).append(lc)
+
     rows = []
     for b in batches:
         slots = list(b.schedule_slots.all())
@@ -105,6 +120,7 @@ def live(request):
                 "slots": slots,
                 "today_slots": [s for s in slots if s.weekday == today_wd],
                 "live": live_by_batch.get(b.id, []),
+                "upcoming": upcoming_by_batch.get(b.id, []),
             }
         )
 
@@ -162,6 +178,72 @@ def start_live(request, slot_id):
         "Class started, but no Google Meet link was generated (Google not connected). "
         "Add a meeting link to this class so students can join.",
     )
+    return redirect("trainers:live")
+
+
+def _next_occurrence(slot, now):
+    """Next future datetime for this weekly slot's weekday + time (aware)."""
+    tz = timezone.get_current_timezone()
+    today = timezone.localdate()
+    days_ahead = (slot.weekday - today.weekday()) % 7
+    date = today + datetime.timedelta(days=days_ahead)
+    start = timezone.make_aware(datetime.datetime.combine(date, slot.start_time), tz)
+    if start <= now:
+        start += datetime.timedelta(days=7)  # slot time already passed this week
+    return start
+
+
+@trainer_required
+def schedule_live(request, slot_id):
+    """Schedule the next occurrence of a weekly slot as an upcoming class.
+
+    Honors the admin weekday gating (you can only schedule existing slots). The
+    Meet link + student Calendar invites are created by the post_save signal.
+    """
+    if request.method != "POST":
+        return redirect("trainers:live")
+    slot = get_object_or_404(
+        BatchScheduleSlot.objects.select_related("batch", "batch__course"), pk=slot_id
+    )
+    if not _can_teach(request.user, slot.batch):
+        raise PermissionDenied("You don't conduct this batch.")
+
+    start = _next_occurrence(slot, timezone.now())
+
+    # Don't double-book the same slot occurrence.
+    existing = LiveClass.objects.filter(
+        batch=slot.batch, start_time=start
+    ).exclude(status=LiveClass.Status.CANCELLED).first()
+    if existing:
+        messages.info(
+            request,
+            f"A class is already scheduled for {start.strftime('%a %d %b, %I:%M %p')}.",
+        )
+        return redirect("trainers:live")
+
+    lc = LiveClass.objects.create(
+        batch=slot.batch,
+        title=f"{slot.batch.name} · {slot.get_weekday_display()} live class",
+        start_time=start,
+        duration_minutes=slot.duration_minutes,
+        required_plan=slot.required_plan,
+        status=LiveClass.Status.SCHEDULED,
+    )
+    lc.refresh_from_db()  # post_save signal may have filled meet_link
+
+    when = start.strftime("%a %d %b, %I:%M %p")
+    if lc.meet_link:
+        messages.success(
+            request,
+            f"Class scheduled for {when}. Eligible students have been invited "
+            "with the Google Meet link.",
+        )
+    else:
+        messages.warning(
+            request,
+            f"Class scheduled for {when}, but no Google Meet link was generated "
+            "(Google not connected). Add a meeting link from the admin so students can join.",
+        )
     return redirect("trainers:live")
 
 

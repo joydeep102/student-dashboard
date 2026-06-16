@@ -55,6 +55,24 @@ class LiveClass(models.Model):
     def required_level(self):
         return self.required_plan.level if self.required_plan_id else 0
 
+    def eligible_attendee_emails(self):
+        """Emails of students who may join this class — used to invite them to
+        the Google Calendar event. A student qualifies with an active enrollment
+        in the batch whose plan level is >= this class's required level.
+        """
+        from courses.models import BatchEnrollment
+
+        enrollments = (
+            BatchEnrollment.objects.filter(batch_id=self.batch_id, is_active=True)
+            .select_related("student", "plan")
+        )
+        required = self.required_level
+        emails = []
+        for e in enrollments:
+            if e.plan.level >= required and e.student.is_active and e.student.email:
+                emails.append(e.student.email)
+        return sorted(set(emails))
+
     @property
     def end_time(self):
         return self.start_time + timezone.timedelta(minutes=self.duration_minutes)

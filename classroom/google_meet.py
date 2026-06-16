@@ -100,12 +100,19 @@ def create_meet_event(live_class) -> tuple[str, str]:
         },
     }
 
+    # Invite the batch's eligible students so Google emails them the Meet link.
+    attendees = [{"email": em} for em in live_class.eligible_attendee_emails()]
+    if attendees:
+        event_body["attendees"] = attendees
+
     event = (
         service.events()
         .insert(
             calendarId=settings.GOOGLE_CALENDAR_ID,
             body=event_body,
             conferenceDataVersion=1,
+            # "all" => Google sends invite emails (with the Meet link) to attendees.
+            sendUpdates="all" if attendees else "none",
         )
         .execute()
     )

@@ -205,6 +205,21 @@ The trainer can **End class** when finished. Trying to start a class on a
 non-scheduled day is rejected. A trainer can only conduct batches whose course
 they're set as the instructor of.
 
+**Start now vs. schedule:** Trainer Studio → Live classes offers two actions per
+batch, both still bound to the admin's weekly class days:
+
+- **▶ Start … now** (only on a scheduled weekday) creates a **live** class
+  immediately.
+- **📅 Schedule next …** books the **next occurrence** of a weekly slot as an
+  upcoming class.
+
+In both cases, if Google is connected (see *Connect Google* above) the portal
+auto-creates the Google Meet link **and adds every eligible student** (active
+enrollment, plan level ≥ the class's required plan) as a **Calendar attendee**
+with `sendUpdates=all` — so Google emails them the invite and Meet link. The
+class also appears on their dashboards with a Join button during the join window
+(from 10 minutes before start until it ends).
+
 ## Login: show-password + Sign in with Google
 
 The login page has a **👁 show/hide password** toggle, and — when configured — a

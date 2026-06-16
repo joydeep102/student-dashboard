@@ -59,20 +59,43 @@
     {% endfor %}
     {% endif %}
 
-    <!-- today's startable slots -->
+    <!-- upcoming scheduled classes -->
+    {% if row.upcoming %}
+    <div class="lb-upcoming">
+        <div class="sr-label">Upcoming scheduled:</div>
+        {% for lc in row.upcoming %}
+        <span class="day-chip">📅 {{ lc.start_time|date:"D d M, g:i A" }}{% if lc.meet_link %} · link ✓{% else %} · no link{% endif %}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- today's startable slots (instant start) -->
     {% if row.today_slots %}
     <div class="start-row">
-        <div class="sr-label">Today's class{{ row.today_slots|pluralize }}:</div>
+        <div class="sr-label">Today's class{{ row.today_slots|pluralize }} — start now:</div>
         {% for s in row.today_slots %}
         <form method="post" action="{% url 'trainers:start_live' s.pk %}" class="start-form">
             {% csrf_token %}
             <input type="text" name="meet_link" placeholder="Paste Meet link (optional)" class="meet-input">
-            <button class="btn btn-live btn-sm" type="submit">▶ Start {{ s.time_display }} class</button>
+            <button class="btn btn-live btn-sm" type="submit">▶ Start {{ s.time_display }} class now</button>
         </form>
         {% endfor %}
     </div>
     {% else %}
-    <div class="no-today">No class scheduled for today ({{ today_name }}) for this batch.</div>
+    <div class="no-today">No class scheduled for today ({{ today_name }}) — you can schedule an upcoming one below.</div>
+    {% endif %}
+
+    <!-- schedule the next occurrence of any weekly slot -->
+    {% if row.slots %}
+    <div class="schedule-row">
+        <div class="sr-label">Schedule next class (auto-creates Meet + invites students):</div>
+        {% for s in row.slots %}
+        <form method="post" action="{% url 'trainers:schedule_live' s.pk %}" class="start-form">
+            {% csrf_token %}
+            <button class="btn btn-ghost btn-sm" type="submit">📅 Schedule next {{ s.get_weekday_display|slice:":3" }} · {{ s.time_display }}</button>
+        </form>
+        {% endfor %}
+    </div>
     {% endif %}
 </div>
 {% endfor %}
