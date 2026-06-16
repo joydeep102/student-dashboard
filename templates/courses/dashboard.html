@@ -11,7 +11,7 @@
         <p>Trade Smarter, Not Harder — here's your learning hub.</p>
         <div class="hero-chips">
             {% if top_plan %}<span class="plan-chip plan-{{ top_plan.accent }}">⭐ {{ top_plan.name }} member</span>{% endif %}
-            <a class="plan-chip ghost" href="{% url 'courses:pricing' %}">View plans</a>
+            {% if not is_top_plan %}<a class="plan-chip ghost" href="{% url 'courses:pricing' %}">{% if top_plan %}⤴ Upgrade{% else %}View plans{% endif %}</a>{% endif %}
         </div>
     </div>
     <div class="dash-hero-art"><img src="{% static 'images/logo.png' %}" alt=""></div>

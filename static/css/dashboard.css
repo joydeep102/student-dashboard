@@ -16,14 +16,16 @@
 @media (max-width: 820px) {
     .topbar-inner { flex-wrap: wrap; gap: 14px; }
     .brand img { height: 40px; }
-    .nav-burger { display: flex; }
-    .topbar-user { display: none; }
+    .nav-burger { display: flex; margin-left: 8px; }
+    .brand { margin-right: auto; }                  /* push controls to the right */
+    .topbar-user { display: flex; gap: 8px; }        /* keep logout visible in the top bar */
+    .topbar-user .user-chip { display: none; }       /* hide the name chip on mobile */
     .topnav { display: none; order: 3; flex-basis: 100%; flex-direction: column; gap: 4px; padding-top: 6px; }
     .nav-toggle:checked ~ .topnav { display: flex; animation: fadeUp .25s ease; }
     .topnav a { padding: 13px 14px; border-radius: 10px; font-size: 1rem; }
     .topnav a:active { background: #eef9f0; }
     .mob-link { display: block; }
-    .topnav .logout-form { margin-top: 4px; }
+    .topnav .logout-form { display: none; }          /* logout now lives in the top bar, not the menu */
 }
 
 /* ---- Hero ---- */

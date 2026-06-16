@@ -62,6 +62,17 @@ def dashboard(request):
 
     top_plan = max((e.plan for e in enrollments), key=lambda p: p.level, default=None)
 
+    # Whether the student is already on the highest available plan (hide "Upgrade").
+    is_top_plan = False
+    if top_plan is not None:
+        max_level = (
+            Plan.objects.filter(is_active=True)
+            .order_by("-level")
+            .values_list("level", flat=True)
+            .first()
+        )
+        is_top_plan = max_level is not None and top_plan.level >= max_level
+
     # Homework the student hasn't submitted yet (shown until they submit).
     pending_homework = []
     if plan_by_batch:
@@ -94,6 +105,7 @@ def dashboard(request):
             "next_class": next_class,
             "continue_lesson": continue_lesson,
             "top_plan": top_plan,
+            "is_top_plan": is_top_plan,
             "pending_homework": pending_homework,
             "stats": {
                 "batches": len(enrollments),
