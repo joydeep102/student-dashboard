@@ -1,6 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from classroom.models import LiveClass
@@ -11,7 +11,12 @@ from .models import Batch, BatchEnrollment, Lesson, Plan
 
 @login_required
 def dashboard(request):
-    """Student home: batches, progress, next live class and lessons to resume."""
+    """Student home: batches, progress, next live class and lessons to resume.
+
+    Trainers don't have a student dashboard — send them to Trainer Studio.
+    """
+    if getattr(request.user, "role", None) == "instructor":
+        return redirect("trainers:dashboard")
     enrollments = list(
         BatchEnrollment.objects.filter(student=request.user, is_active=True)
         .select_related("batch", "batch__course", "plan")
