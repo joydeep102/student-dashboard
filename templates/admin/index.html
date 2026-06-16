@@ -48,49 +48,72 @@
     </a>
 </div>
 
-<!-- Quick actions -->
-<h2 class="fb-section">Quick actions</h2>
-<div class="fb-actions">
-    <a href="{% url 'admin:accounts_user_add' %}" class="fb-action">
-        <span class="fb-action-ic">➕</span>
-        <span><strong>Add student</strong><small>Create a new student account</small></span>
-    </a>
-    <a href="{% url 'admin:courses_batch_add' %}" class="fb-action">
-        <span class="fb-action-ic">👥</span>
-        <span><strong>New batch</strong><small>Start a batch & add students + videos</small></span>
-    </a>
-    <a href="{% url 'admin:classroom_liveclass_add' %}" class="fb-action">
-        <span class="fb-action-ic">📅</span>
-        <span><strong>Schedule live class</strong><small>Auto-creates a Google Meet link</small></span>
-    </a>
-    <a href="{% url 'admin:courses_batchenrollment_add' %}" class="fb-action">
-        <span class="fb-action-ic">🔗</span>
-        <span><strong>Enroll student</strong><small>Add a student to a batch on a plan</small></span>
-    </a>
-    <a href="{% url 'admin:trainers_videosubmission_changelist' %}?status__exact=pending" class="fb-action">
-        <span class="fb-action-ic">🎬</span>
-        <span><strong>Review trainer videos</strong><small>Approve &amp; publish to YouTube</small></span>
-    </a>
-</div>
+<!-- Board: actions on the left, live info panels on the right rail -->
+<div class="fb-board">
+  <div class="fb-board-main">
+    <!-- Quick actions -->
+    <h2 class="fb-section">Quick actions</h2>
+    <div class="fb-actions">
+        <a href="{% url 'admin:accounts_user_add' %}" class="fb-action">
+            <span class="fb-action-ic">➕</span>
+            <span><strong>Add student</strong><small>Create a new student account</small></span>
+        </a>
+        <a href="{% url 'admin:courses_batch_add' %}" class="fb-action">
+            <span class="fb-action-ic">👥</span>
+            <span><strong>New batch</strong><small>Start a batch & add students + videos</small></span>
+        </a>
+        <a href="{% url 'admin:classroom_liveclass_add' %}" class="fb-action">
+            <span class="fb-action-ic">📅</span>
+            <span><strong>Schedule live class</strong><small>Auto-creates a Google Meet link</small></span>
+        </a>
+        <a href="{% url 'admin:courses_batchenrollment_add' %}" class="fb-action">
+            <span class="fb-action-ic">🔗</span>
+            <span><strong>Enroll student</strong><small>Add a student to a batch on a plan</small></span>
+        </a>
+        <a href="{% url 'admin:trainers_videosubmission_changelist' %}?status__exact=pending" class="fb-action">
+            <span class="fb-action-ic">🎬</span>
+            <span><strong>Review trainer videos</strong><small>Approve &amp; publish to YouTube</small></span>
+        </a>
+    </div>
 
-<!-- Google connections -->
-<h2 class="fb-section">Google connections</h2>
-<div class="fb-actions">
-    <a href="{% url 'accounts:google_connect' %}?kind=calendar" class="fb-action">
-        <span class="fb-action-ic">📅</span>
-        <span><strong>Calendar / Meet
-            {% if fb_google.calendar %}<span class="fb-pill ok">connected ✓</span>{% else %}<span class="fb-pill warn">connect</span>{% endif %}</strong>
-        <small>Auto-generate Google Meet links for live classes</small></span>
-    </a>
-    <a href="{% url 'accounts:google_connect' %}?kind=youtube" class="fb-action">
-        <span class="fb-action-ic">▶</span>
-        <span><strong>YouTube upload
-            {% if fb_google.youtube %}<span class="fb-pill ok">connected ✓</span>{% else %}<span class="fb-pill warn">connect</span>{% endif %}</strong>
-        <small>Publish approved trainer videos as unlisted</small></span>
-    </a>
-</div>
+    <!-- Google connections -->
+    <h2 class="fb-section">Google connections</h2>
+    <div class="fb-actions">
+        <a href="{% url 'accounts:google_connect' %}?kind=calendar" class="fb-action">
+            <span class="fb-action-ic">📅</span>
+            <span><strong>Calendar / Meet
+                {% if fb_google.calendar %}<span class="fb-pill ok">connected ✓</span>{% else %}<span class="fb-pill warn">connect</span>{% endif %}</strong>
+            <small>Auto-generate Google Meet links for live classes</small></span>
+        </a>
+        <a href="{% url 'accounts:google_connect' %}?kind=youtube" class="fb-action">
+            <span class="fb-action-ic">▶</span>
+            <span><strong>YouTube upload
+                {% if fb_google.youtube %}<span class="fb-pill ok">connected ✓</span>{% else %}<span class="fb-pill warn">connect</span>{% endif %}</strong>
+            <small>Publish approved trainer videos as unlisted</small></span>
+        </a>
+    </div>
+  </div>
 
-<div class="fb-cols">
+  <aside class="fb-board-side">
+    <!-- Trainer videos awaiting approval (only when there are some) -->
+    {% if fb_pending_videos %}
+    <div class="fb-panel fb-approve">
+        <div class="fb-panel-head"><h2>🎬 Videos to approve</h2>
+            <a href="{% url 'admin:trainers_videosubmission_changelist' %}?status__exact=pending">Review all</a></div>
+        <ul class="fb-listing">
+            {% for v in fb_pending_videos %}
+            <li>
+                <a href="{% url 'admin:trainers_videosubmission_change' v.pk %}">
+                    <span class="fb-li-title">{{ v.title }}</span>
+                    <span class="fb-li-meta">{{ v.trainer.display_name }} · {{ v.batch.name }} · {{ v.created_at|date:"d M, g:i A" }}</span>
+                </a>
+                <span class="fb-pill warn">pending</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     <!-- Upcoming classes -->
     <div class="fb-panel">
         <div class="fb-panel-head"><h2>Upcoming live classes</h2>
@@ -128,26 +151,8 @@
         </ul>
         {% else %}<p class="fb-empty">No students yet. Add your first one above.</p>{% endif %}
     </div>
+  </aside>
 </div>
-
-<!-- Trainer videos awaiting approval -->
-{% if fb_pending_videos %}
-<div class="fb-panel fb-approve">
-    <div class="fb-panel-head"><h2>🎬 Videos awaiting your approval</h2>
-        <a href="{% url 'admin:trainers_videosubmission_changelist' %}?status__exact=pending">Review all</a></div>
-    <ul class="fb-listing">
-        {% for v in fb_pending_videos %}
-        <li>
-            <a href="{% url 'admin:trainers_videosubmission_change' v.pk %}">
-                <span class="fb-li-title">{{ v.title }}</span>
-                <span class="fb-li-meta">{{ v.trainer.display_name }} · {{ v.batch.name }} · {{ v.created_at|date:"d M, g:i A" }}</span>
-            </a>
-            <span class="fb-pill warn">pending</span>
-        </li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %}
 
 <!-- Standard app/model list (collapsible reference) -->
 <h2 class="fb-section">All management sections</h2>

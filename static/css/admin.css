@@ -113,7 +113,14 @@ body { background: var(--body-bg); }
 .fb-action strong { font-size: .98rem; color: var(--body-loud-color); }
 .fb-action small { color: var(--body-quiet-color); font-size: .8rem; }
 
-/* Two-column panels */
+/* Board layout: actions (left) + info rail (right) so the width is used */
+.fb-board { display: grid; gap: 22px; grid-template-columns: 1.7fr 1fr; align-items: start; margin-top: 6px; }
+@media (max-width: 1100px){ .fb-board { grid-template-columns: 1fr; } }
+.fb-board-main .fb-section:first-child { margin-top: 4px; }
+.fb-board-side { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 16px; }
+.fb-board-side .fb-panel { margin: 0; }
+
+/* Two-column panels (used elsewhere) */
 .fb-cols { display: grid; gap: 18px; grid-template-columns: 1fr 1fr; margin-top: 8px; }
 @media (max-width: 900px){ .fb-cols { grid-template-columns: 1fr; } }
 .fb-panel { background: #fff; border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden;
