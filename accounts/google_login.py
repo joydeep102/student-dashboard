@@ -87,6 +87,9 @@ def google_login(request):
         prompt="select_account", access_type="online", include_granted_scopes="true"
     )
     request.session["g_oauth_state"] = state
+    # Persist the PKCE verifier so the callback (a fresh Flow) can complete the
+    # token exchange — otherwise Google rejects it with "Missing code verifier".
+    request.session["g_code_verifier"] = flow.code_verifier
     return redirect(auth_url)
 
 
@@ -114,15 +117,17 @@ def google_connect(request):
     )
     request.session["g_oauth_state"] = state
     request.session["g_connect_kind"] = kind
+    request.session["g_code_verifier"] = flow.code_verifier  # PKCE
     return redirect(auth_url)
 
 
-def _finish_connect(request, kind, state, auth_response):
+def _finish_connect(request, kind, state, code_verifier, auth_response):
     """Exchange the code for tokens and cache them for the chosen integration."""
     scopes, token_attr, label = CONNECT[kind]
     token_file = getattr(settings, token_attr)
     try:
         flow = _flow(scopes=scopes, state=state)
+        flow.code_verifier = code_verifier  # restore PKCE verifier
         flow.fetch_token(authorization_response=auth_response)
     except Exception:
         log.exception("Google %s connect: token exchange failed", kind)
@@ -158,6 +163,7 @@ def google_callback(request):
         return _login_error("Google login isn't configured.")
     connect_kind = request.session.pop("g_connect_kind", None)
     if request.GET.get("error"):
+        request.session.pop("g_code_verifier", None)
         if connect_kind:
             messages.error(request, "Google authorization was cancelled.")
             return redirect("admin:index")
@@ -165,6 +171,7 @@ def google_callback(request):
 
     _allow_insecure_transport()
     state = request.session.pop("g_oauth_state", None)
+    code_verifier = request.session.pop("g_code_verifier", None)
     # Build the authorization response from the CONFIGURED redirect URI (https)
     # rather than request.build_absolute_uri(), so it works correctly behind an
     # HTTPS reverse proxy that forwards plain http to the app.
@@ -175,10 +182,11 @@ def google_callback(request):
 
     # Admin Calendar/YouTube connection rather than a user login.
     if connect_kind in CONNECT:
-        return _finish_connect(request, connect_kind, state, auth_response)
+        return _finish_connect(request, connect_kind, state, code_verifier, auth_response)
 
     try:
         flow = _flow(state=state)
+        flow.code_verifier = code_verifier  # restore PKCE verifier
         flow.fetch_token(authorization_response=auth_response)
     except Exception:
         log.exception("Google OAuth token exchange failed")
