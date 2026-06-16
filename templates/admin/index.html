@@ -154,10 +154,31 @@
   </aside>
 </div>
 
-<!-- Standard app/model list (collapsible reference) -->
+<!-- All management sections — modern card grid -->
 <h2 class="fb-section">All management sections</h2>
-<div class="fb-applist">
-    {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+<div class="fb-appgrid">
+    {% for app in app_list %}
+    <section class="fb-appcard">
+        <header class="fb-appcard-head">
+            <a href="{{ app.app_url }}">{{ app.name }}</a>
+        </header>
+        <ul class="fb-modellist">
+            {% for model in app.models %}
+            <li>
+                {% if model.admin_url %}
+                <a href="{{ model.admin_url }}" class="fb-model-name">{{ model.name }}</a>
+                {% else %}
+                <span class="fb-model-name muted">{{ model.name }}</span>
+                {% endif %}
+                <span class="fb-model-acts">
+                    {% if model.add_url %}<a href="{{ model.add_url }}" class="fb-mini add">＋ Add</a>{% endif %}
+                    {% if model.admin_url and not model.view_only %}<a href="{{ model.admin_url }}" class="fb-mini">Manage</a>{% endif %}
+                </span>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endfor %}
 </div>
 {% endwith %}
 {% endblock %}
