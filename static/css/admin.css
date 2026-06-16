@@ -178,11 +178,16 @@ a:link, a:visited { color: var(--link-fg); }
 .object-tools a { border-radius: 8px; }
 
 /* ===========================================================
-   Fill the width — kill the empty right column on the dashboard
+   Full-width content — make the admin edge-to-edge (kill the
+   big blank right area; content should fill the viewport).
    =========================================================== */
-.colM #content-main { width: 100%; float: none; }
-#content.colM { max-width: none; }
-.dashboard.fb-dashboard #content { max-width: 1500px; }   /* center on ultra-wide */
+.main { display: flex; align-items: flex-start; }
+#nav-sidebar { flex: 0 0 auto; }
+#content-start, main#content-start { flex: 1 1 auto !important; min-width: 0;
+    width: auto !important; max-width: none !important; }
+#content, #content.colM { width: 100% !important; max-width: none !important; box-sizing: border-box; }
+.colM #content-main { width: 100% !important; float: none !important; }
+#content-related { display: none !important; }   /* never reserve the right sidebar column */
 
 /* ===========================================================
    Left nav sidebar — collapsible app groups (accordion) + search
