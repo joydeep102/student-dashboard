@@ -10,7 +10,9 @@ import os
 from urllib.parse import urlencode
 
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import get_user_model, login
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 
 User = get_user_model()
@@ -29,6 +31,22 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.profile",
 ]
 
+# Admin-only "connect" flows that reuse this same web client to authorize the
+# server-side Google APIs and cache their tokens. Maps kind -> (scopes,
+# settings attr holding the token-file path, human label).
+CONNECT = {
+    "calendar": (
+        ["https://www.googleapis.com/auth/calendar.events"],
+        "GOOGLE_OAUTH_TOKEN_FILE",
+        "Google Calendar / Meet",
+    ),
+    "youtube": (
+        ["https://www.googleapis.com/auth/youtube.upload"],
+        "GOOGLE_YOUTUBE_TOKEN_FILE",
+        "YouTube upload",
+    ),
+}
+
 
 def _login_error(msg):
     return redirect("/accounts/login/?" + urlencode({"auth_error": msg}))
@@ -40,7 +58,7 @@ def _allow_insecure_transport():
         os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 
-def _flow(state=None):
+def _flow(scopes=None, state=None):
     from google_auth_oauthlib.flow import Flow
 
     client_config = {
@@ -52,7 +70,7 @@ def _flow(state=None):
             "redirect_uris": [settings.GOOGLE_LOGIN_REDIRECT_URI],
         }
     }
-    kwargs = {"scopes": SCOPES, "redirect_uri": settings.GOOGLE_LOGIN_REDIRECT_URI}
+    kwargs = {"scopes": scopes or SCOPES, "redirect_uri": settings.GOOGLE_LOGIN_REDIRECT_URI}
     if state:
         kwargs["state"] = state
     return Flow.from_client_config(client_config, **kwargs)
@@ -63,6 +81,7 @@ def google_login(request):
     if not settings.GOOGLE_LOGIN_ENABLED:
         return _login_error("Google login isn't configured.")
     _allow_insecure_transport()
+    request.session.pop("g_connect_kind", None)  # this is a login, not a connect
     flow = _flow()
     auth_url, state = flow.authorization_url(
         prompt="select_account", access_type="online", include_granted_scopes="true"
@@ -71,11 +90,77 @@ def google_login(request):
     return redirect(auth_url)
 
 
+def google_connect(request):
+    """Admin-only: authorize the server-side Calendar/YouTube APIs.
+
+    Reuses the Sign-in-with-Google web client and its registered redirect URI,
+    requesting offline access so we cache a refresh token. ``?kind=`` selects
+    which integration (calendar | youtube).
+    """
+    if not (request.user.is_authenticated and request.user.is_staff):
+        raise PermissionDenied("Admin access only.")
+    if not settings.GOOGLE_LOGIN_ENABLED:
+        return _login_error("Google client isn't configured.")
+    kind = request.GET.get("kind", "")
+    if kind not in CONNECT:
+        return _login_error("Unknown Google connection type.")
+
+    _allow_insecure_transport()
+    scopes = CONNECT[kind][0]
+    flow = _flow(scopes=scopes)
+    # offline + consent so Google returns a refresh token we can store and reuse.
+    auth_url, state = flow.authorization_url(
+        prompt="consent", access_type="offline", include_granted_scopes="false"
+    )
+    request.session["g_oauth_state"] = state
+    request.session["g_connect_kind"] = kind
+    return redirect(auth_url)
+
+
+def _finish_connect(request, kind, state, auth_response):
+    """Exchange the code for tokens and cache them for the chosen integration."""
+    scopes, token_attr, label = CONNECT[kind]
+    token_file = getattr(settings, token_attr)
+    try:
+        flow = _flow(scopes=scopes, state=state)
+        flow.fetch_token(authorization_response=auth_response)
+    except Exception:
+        log.exception("Google %s connect: token exchange failed", kind)
+        messages.error(request, f"Couldn't connect {label}. Please try again.")
+        return redirect("admin:index")
+
+    creds = flow.credentials
+    if not creds.refresh_token:
+        # Without a refresh token the link would die in an hour. Force re-consent.
+        messages.error(
+            request,
+            f"{label}: Google didn't return a refresh token. Remove the app's "
+            "access at myaccount.google.com/permissions, then connect again.",
+        )
+        return redirect("admin:index")
+    try:
+        os.makedirs(os.path.dirname(token_file), exist_ok=True)
+        with open(token_file, "w", encoding="utf-8") as fh:
+            fh.write(creds.to_json())
+    except Exception:
+        log.exception("Could not save %s token to %s", kind, token_file)
+        messages.error(request, f"{label}: authorized but couldn't save the token file.")
+        return redirect("admin:index")
+
+    log.info("%s connected; token saved to %s", label, token_file)
+    messages.success(request, f"{label} connected ✓")
+    return redirect("admin:index")
+
+
 def google_callback(request):
-    """Handle Google's redirect: verify email and log the user in."""
+    """Handle Google's redirect: log a user in, or finish an admin connect."""
     if not settings.GOOGLE_LOGIN_ENABLED:
         return _login_error("Google login isn't configured.")
+    connect_kind = request.session.pop("g_connect_kind", None)
     if request.GET.get("error"):
+        if connect_kind:
+            messages.error(request, "Google authorization was cancelled.")
+            return redirect("admin:index")
         return _login_error("Google sign-in was cancelled.")
 
     _allow_insecure_transport()
@@ -87,6 +172,11 @@ def google_callback(request):
     auth_response = settings.GOOGLE_LOGIN_REDIRECT_URI
     if query:
         auth_response = f"{auth_response}?{query}"
+
+    # Admin Calendar/YouTube connection rather than a user login.
+    if connect_kind in CONNECT:
+        return _finish_connect(request, connect_kind, state, auth_response)
+
     try:
         flow = _flow(state=state)
         flow.fetch_token(authorization_response=auth_response)

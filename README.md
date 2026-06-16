@@ -248,6 +248,29 @@ secrets/       Google OAuth client secret & cached token (git-ignored)
 
 ---
 
+## Connect Google (Calendar + YouTube) from the admin — recommended
+
+Instead of the Desktop-client `google_auth` / `youtube_auth` commands (which need
+a browser on the server), you can connect both from the **admin home** using the
+same web OAuth client as "Sign in with Google":
+
+1. Make sure the login client is configured (`secrets/google_login.json` or the
+   `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` env vars), and its
+   `redirect_uri` is your production callback
+   (`https://YOUR-DOMAIN/accounts/google/callback/`), registered in the Console.
+2. In the Google Cloud Console, **enable the Calendar API and YouTube Data API
+   v3**, and add the scopes `…/auth/calendar.events` and `…/auth/youtube.upload`
+   to the OAuth consent screen. While the app is in *Testing*, add the admin's
+   Google account as a **test user**.
+3. Log in to `/admin/` as an admin → **Google connections** panel →
+   **Calendar / Meet** and **YouTube**. Each opens a Google consent screen
+   (offline access, so a refresh token is stored) and caches its token
+   (`secrets/token.json`, `secrets/youtube_token.json`). The panel then shows
+   **connected ✓**.
+
+> For **YouTube**, sign in with the Google account that owns the target channel
+> so uploads land there. The connect links are admin-only.
+
 ## Troubleshooting
 
 ### "Sign in with Google" — `Error 400: redirect_uri_mismatch`

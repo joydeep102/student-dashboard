@@ -27,10 +27,16 @@ class YouTubeUnavailable(RuntimeError):
     """Raised when uploading can't proceed (missing libs or credentials)."""
 
 
-def is_configured() -> bool:
-    return os.path.exists(settings.GOOGLE_OAUTH_CLIENT_SECRET_FILE) and os.path.exists(
-        settings.GOOGLE_YOUTUBE_TOKEN_FILE
+def _client_configured() -> bool:
+    """OAuth client via a Desktop client_secret.json OR the reused
+    Sign-in-with-Google web client (admin connect flow)."""
+    return os.path.exists(settings.GOOGLE_OAUTH_CLIENT_SECRET_FILE) or bool(
+        getattr(settings, "GOOGLE_LOGIN_CLIENT_ID", "")
     )
+
+
+def is_configured() -> bool:
+    return _client_configured() and os.path.exists(settings.GOOGLE_YOUTUBE_TOKEN_FILE)
 
 
 def _load_credentials():

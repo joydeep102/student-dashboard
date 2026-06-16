@@ -73,6 +73,23 @@
     </a>
 </div>
 
+<!-- Google connections -->
+<h2 class="fb-section">Google connections</h2>
+<div class="fb-actions">
+    <a href="{% url 'accounts:google_connect' %}?kind=calendar" class="fb-action">
+        <span class="fb-action-ic">📅</span>
+        <span><strong>Calendar / Meet
+            {% if fb_google.calendar %}<span class="fb-pill ok">connected ✓</span>{% else %}<span class="fb-pill warn">connect</span>{% endif %}</strong>
+        <small>Auto-generate Google Meet links for live classes</small></span>
+    </a>
+    <a href="{% url 'accounts:google_connect' %}?kind=youtube" class="fb-action">
+        <span class="fb-action-ic">▶</span>
+        <span><strong>YouTube upload
+            {% if fb_google.youtube %}<span class="fb-pill ok">connected ✓</span>{% else %}<span class="fb-pill warn">connect</span>{% endif %}</strong>
+        <small>Publish approved trainer videos as unlisted</small></span>
+    </a>
+</div>
+
 <div class="fb-cols">
     <!-- Upcoming classes -->
     <div class="fb-panel">

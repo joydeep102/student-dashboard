@@ -29,4 +29,6 @@ urlpatterns = [
     # Sign in with Google
     path("google/login/", google_login.google_login, name="google_login"),
     path("google/callback/", google_login.google_callback, name="google_callback"),
+    # Admin-only: connect server-side Calendar/YouTube (?kind=calendar|youtube)
+    path("google/connect/", google_login.google_connect, name="google_connect"),
 ]

@@ -51,6 +51,14 @@ class AccountsConfig(AppConfig):
             extra_context["fb_students"] = User.objects.filter(
                 role=User.Role.STUDENT
             ).order_by("-date_joined")[:6]
+
+            from classroom.google_meet import is_configured as calendar_connected
+            from trainers.youtube import is_configured as youtube_connected
+
+            extra_context["fb_google"] = {
+                "calendar": calendar_connected(),
+                "youtube": youtube_connected(),
+            }
             return original_index(request, extra_context)
 
         admin.site.index = index_with_dashboard

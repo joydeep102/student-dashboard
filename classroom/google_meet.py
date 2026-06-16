@@ -29,11 +29,17 @@ class GoogleMeetUnavailable(RuntimeError):
     """Raised when Meet links can't be generated (missing libs or creds)."""
 
 
-def is_configured() -> bool:
-    """True if the OAuth client secret and a cached token both exist."""
-    return os.path.exists(settings.GOOGLE_OAUTH_CLIENT_SECRET_FILE) and os.path.exists(
-        settings.GOOGLE_OAUTH_TOKEN_FILE
+def _client_configured() -> bool:
+    """An OAuth client is available via a Desktop client_secret.json OR the
+    Sign-in-with-Google web client settings (reused by the admin connect flow)."""
+    return os.path.exists(settings.GOOGLE_OAUTH_CLIENT_SECRET_FILE) or bool(
+        getattr(settings, "GOOGLE_LOGIN_CLIENT_ID", "")
     )
+
+
+def is_configured() -> bool:
+    """True if a client is available and a cached token exists."""
+    return _client_configured() and os.path.exists(settings.GOOGLE_OAUTH_TOKEN_FILE)
 
 
 def _load_credentials():
