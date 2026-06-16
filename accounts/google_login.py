@@ -47,6 +47,12 @@ CONNECT = {
         "YouTube upload",
         "admin:index",
     ),
+    "gmail": (
+        ["https://www.googleapis.com/auth/gmail.send"],
+        "GOOGLE_GMAIL_TOKEN_FILE",
+        "Gmail (send mail)",
+        "admin:index",
+    ),
     # Per-trainer: token saved to GOOGLE_TRAINER_TOKEN_DIR/<user_id>.json so the
     # trainer becomes the host of their batch's Meet links.
     "trainer": (

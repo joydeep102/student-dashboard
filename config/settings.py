@@ -175,6 +175,11 @@ GOOGLE_YOUTUBE_TOKEN_FILE = os.environ.get(
 GOOGLE_TRAINER_TOKEN_DIR = os.environ.get(
     "GOOGLE_TRAINER_TOKEN_DIR", str(BASE_DIR / "secrets" / "trainer_tokens")
 )
+# Cached token (gmail.send scope) for sending mail — e.g. forgot-password.
+# Authorized via the admin "Connect Gmail" button, reusing the login client.
+GOOGLE_GMAIL_TOKEN_FILE = os.environ.get(
+    "GOOGLE_GMAIL_TOKEN_FILE", str(BASE_DIR / "secrets" / "gmail_token.json")
+)
 # Default privacy for trainer videos uploaded to YouTube (kept off public search).
 YOUTUBE_UPLOAD_PRIVACY = os.environ.get("YOUTUBE_UPLOAD_PRIVACY", "unlisted")
 

@@ -54,10 +54,12 @@ class AccountsConfig(AppConfig):
 
             from classroom.google_meet import is_configured as calendar_connected
             from trainers.youtube import is_configured as youtube_connected
+            from accounts.gmail_send import is_configured as gmail_connected
 
             extra_context["fb_google"] = {
                 "calendar": calendar_connected(),
                 "youtube": youtube_connected(),
+                "gmail": gmail_connected(),
             }
 
             # --- Chart data ---------------------------------------------------

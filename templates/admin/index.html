@@ -99,6 +99,12 @@
                 {% if fb_google.youtube %}<span class="fb-pill ok">connected ✓</span>{% else %}<span class="fb-pill warn">connect</span>{% endif %}</strong>
             <small>Publish approved trainer videos as unlisted</small></span>
         </a>
+        <a href="{% url 'accounts:google_connect' %}?kind=gmail" class="fb-action">
+            <span class="fb-action-ic">✉</span>
+            <span><strong>Gmail (send mail)
+                {% if fb_google.gmail %}<span class="fb-pill ok">connected ✓</span>{% else %}<span class="fb-pill warn">connect</span>{% endif %}</strong>
+            <small>Send forgot-password emails to students</small></span>
+        </a>
     </div>
   </div>
 

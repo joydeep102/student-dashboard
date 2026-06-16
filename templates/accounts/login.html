@@ -40,6 +40,10 @@
             <button type="submit" class="btn btn-block" style="margin-top:8px;">Sign in</button>
         </form>
 
+        <p class="auth-sub" style="margin-top:12px; font-size:.85rem;">
+            <a href="{% url 'accounts:forgot_password' %}">Forgot password?</a>
+        </p>
+
         {% if google_enabled %}
         <div class="or-divider"><span>or</span></div>
         <a class="gbtn" href="{% url 'accounts:google_login' %}">
