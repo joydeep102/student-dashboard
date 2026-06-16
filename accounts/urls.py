@@ -3,6 +3,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from . import google_login, views
+from .forms import EmailAuthenticationForm
 
 app_name = "accounts"
 
@@ -12,6 +13,7 @@ urlpatterns = [
         auth_views.LoginView.as_view(
             template_name="accounts/login.html",
             redirect_authenticated_user=True,
+            authentication_form=EmailAuthenticationForm,
             extra_context={"google_enabled": settings.GOOGLE_LOGIN_ENABLED},
         ),
         name="login",

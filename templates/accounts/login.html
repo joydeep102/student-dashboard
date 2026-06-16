@@ -31,8 +31,10 @@
                     <button type="button" class="pw-toggle" id="pwToggle" aria-label="Show password" title="Show password">👁</button>
                 </div>
             </div>
-            {% if form.errors %}
-            <div class="form-error">Invalid email or password. Please try again.</div>
+            {% if form.non_field_errors %}
+            <div class="form-error">{{ form.non_field_errors|join:" " }}</div>
+            {% elif form.errors %}
+            <div class="form-error">Please enter a valid email and password.</div>
             {% endif %}
             <input type="hidden" name="next" value="{{ next }}">
             <button type="submit" class="btn btn-block" style="margin-top:8px;">Sign in</button>
