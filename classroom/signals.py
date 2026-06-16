@@ -3,7 +3,12 @@ import logging
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from .google_meet import GoogleMeetUnavailable, create_meet_event, delete_meet_event, is_configured
+from .google_meet import (
+    GoogleMeetUnavailable,
+    can_create_meet,
+    create_meet_event,
+    delete_meet_event,
+)
 from .models import LiveClass
 
 log = logging.getLogger(__name__)
@@ -16,7 +21,7 @@ def auto_create_meet_link(sender, instance: LiveClass, created, **kwargs):
     Silently no-ops (leaving the admin free to paste a link) when Google
     credentials aren't configured, so the portal works out of the box.
     """
-    if instance.meet_link or not is_configured():
+    if instance.meet_link or not can_create_meet(instance):
         return
     try:
         meet_link, event_id = create_meet_event(instance)
@@ -36,5 +41,5 @@ def auto_create_meet_link(sender, instance: LiveClass, created, **kwargs):
 
 @receiver(post_delete, sender=LiveClass)
 def cleanup_meet_event(sender, instance: LiveClass, **kwargs):
-    if instance.google_event_id and is_configured():
-        delete_meet_event(instance.google_event_id)
+    if instance.google_event_id and can_create_meet(instance):
+        delete_meet_event(instance.google_event_id, instance)

@@ -167,6 +167,12 @@ GOOGLE_CALENDAR_ID = os.environ.get("GOOGLE_CALENDAR_ID", "primary")
 GOOGLE_YOUTUBE_TOKEN_FILE = os.environ.get(
     "GOOGLE_YOUTUBE_TOKEN_FILE", str(BASE_DIR / "secrets" / "youtube_token.json")
 )
+# Per-trainer cached OAuth tokens (one JSON per user id). When a batch's
+# trainer has connected their own Google, that batch's Meet events are created
+# on the trainer's calendar so the trainer is the meeting host.
+GOOGLE_TRAINER_TOKEN_DIR = os.environ.get(
+    "GOOGLE_TRAINER_TOKEN_DIR", str(BASE_DIR / "secrets" / "trainer_tokens")
+)
 # Default privacy for trainer videos uploaded to YouTube (kept off public search).
 YOUTUBE_UPLOAD_PRIVACY = os.environ.get("YOUTUBE_UPLOAD_PRIVACY", "unlisted")
 

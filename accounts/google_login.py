@@ -31,21 +31,36 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.profile",
 ]
 
-# Admin-only "connect" flows that reuse this same web client to authorize the
-# server-side Google APIs and cache their tokens. Maps kind -> (scopes,
-# settings attr holding the token-file path, human label).
+# "Connect" flows that reuse this same web client to authorize the server-side
+# Google APIs and cache their tokens. Maps kind -> (scopes, settings attr for
+# the token-file path or None for per-trainer, human label, redirect target).
 CONNECT = {
     "calendar": (
         ["https://www.googleapis.com/auth/calendar.events"],
         "GOOGLE_OAUTH_TOKEN_FILE",
         "Google Calendar / Meet",
+        "admin:index",
     ),
     "youtube": (
         ["https://www.googleapis.com/auth/youtube.upload"],
         "GOOGLE_YOUTUBE_TOKEN_FILE",
         "YouTube upload",
+        "admin:index",
+    ),
+    # Per-trainer: token saved to GOOGLE_TRAINER_TOKEN_DIR/<user_id>.json so the
+    # trainer becomes the host of their batch's Meet links.
+    "trainer": (
+        ["https://www.googleapis.com/auth/calendar.events"],
+        None,
+        "Google (host your live classes)",
+        "trainers:live",
     ),
 }
+
+
+def trainer_token_path(user):
+    """Path to a trainer's cached OAuth token (keyed by user id)."""
+    return os.path.join(settings.GOOGLE_TRAINER_TOKEN_DIR, f"{user.id}.json")
 
 
 def _login_error(msg):
@@ -100,13 +115,19 @@ def google_connect(request):
     requesting offline access so we cache a refresh token. ``?kind=`` selects
     which integration (calendar | youtube).
     """
-    if not (request.user.is_authenticated and request.user.is_staff):
-        raise PermissionDenied("Admin access only.")
-    if not settings.GOOGLE_LOGIN_ENABLED:
-        return _login_error("Google client isn't configured.")
     kind = request.GET.get("kind", "")
     if kind not in CONNECT:
         return _login_error("Unknown Google connection type.")
+    if not request.user.is_authenticated:
+        raise PermissionDenied
+    if kind == "trainer":
+        role = getattr(request.user, "role", None)
+        if not (role in ("instructor", "admin") or request.user.is_superuser):
+            raise PermissionDenied("Trainer access only.")
+    elif not request.user.is_staff:
+        raise PermissionDenied("Admin access only.")
+    if not settings.GOOGLE_LOGIN_ENABLED:
+        return _login_error("Google client isn't configured.")
 
     _allow_insecure_transport()
     scopes = CONNECT[kind][0]
@@ -123,8 +144,11 @@ def google_connect(request):
 
 def _finish_connect(request, kind, state, code_verifier, auth_response):
     """Exchange the code for tokens and cache them for the chosen integration."""
-    scopes, token_attr, label = CONNECT[kind]
-    token_file = getattr(settings, token_attr)
+    scopes, token_attr, label, redirect_to = CONNECT[kind]
+    token_file = (
+        trainer_token_path(request.user) if token_attr is None
+        else getattr(settings, token_attr)
+    )
     try:
         flow = _flow(scopes=scopes, state=state)
         flow.code_verifier = code_verifier  # restore PKCE verifier
@@ -132,7 +156,7 @@ def _finish_connect(request, kind, state, code_verifier, auth_response):
     except Exception:
         log.exception("Google %s connect: token exchange failed", kind)
         messages.error(request, f"Couldn't connect {label}. Please try again.")
-        return redirect("admin:index")
+        return redirect(redirect_to)
 
     creds = flow.credentials
     if not creds.refresh_token:
@@ -142,7 +166,7 @@ def _finish_connect(request, kind, state, code_verifier, auth_response):
             f"{label}: Google didn't return a refresh token. Remove the app's "
             "access at myaccount.google.com/permissions, then connect again.",
         )
-        return redirect("admin:index")
+        return redirect(redirect_to)
     try:
         os.makedirs(os.path.dirname(token_file), exist_ok=True)
         with open(token_file, "w", encoding="utf-8") as fh:
@@ -150,11 +174,11 @@ def _finish_connect(request, kind, state, code_verifier, auth_response):
     except Exception:
         log.exception("Could not save %s token to %s", kind, token_file)
         messages.error(request, f"{label}: authorized but couldn't save the token file.")
-        return redirect("admin:index")
+        return redirect(redirect_to)
 
     log.info("%s connected; token saved to %s", label, token_file)
     messages.success(request, f"{label} connected ✓")
-    return redirect("admin:index")
+    return redirect(redirect_to)
 
 
 def google_callback(request):

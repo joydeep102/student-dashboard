@@ -1,4 +1,5 @@
 import datetime
+import os
 from functools import wraps
 
 from django.contrib import messages
@@ -124,10 +125,19 @@ def live(request):
             }
         )
 
+    from accounts.google_login import trainer_token_path
+
+    host_connected = os.path.exists(trainer_token_path(request.user))
+
     return render(
         request,
         "trainers/live.html",
-        {"rows": rows, "today_name": today.strftime("%A"), "has_batches": bool(rows)},
+        {
+            "rows": rows,
+            "today_name": today.strftime("%A"),
+            "has_batches": bool(rows),
+            "host_connected": host_connected,
+        },
     )
 
 

@@ -1,4 +1,13 @@
 /* Fighter Bull's — Trainer Studio (upload form + submission list) */
+
+/* "Be the host" connect banner */
+.host-banner { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    flex-wrap: wrap; margin: 14px 0 18px; padding: 16px 18px; border-radius: 16px;
+    background: #fff8ec; border: 1px solid #f6c768; box-shadow: var(--shadow-sm); }
+.host-banner.ok { background: #e9f7ec; border-color: #9ad9a8; }
+.host-banner div { flex: 1; min-width: 240px; font-size: .9rem; }
+.host-banner strong { color: var(--text); }
+
 .upload-form { max-width: 640px; background: #fff; border: 1px solid var(--border); border-radius: 18px;
     padding: 26px; box-shadow: var(--shadow-sm); margin-top: 12px; }
 .upload-form select, .upload-form input[type=text], .upload-form textarea, .upload-form input[type=file] {

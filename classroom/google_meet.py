@@ -38,11 +38,38 @@ def _client_configured() -> bool:
 
 
 def is_configured() -> bool:
-    """True if a client is available and a cached token exists."""
+    """True if a client is available and the central cached token exists."""
     return _client_configured() and os.path.exists(settings.GOOGLE_OAUTH_TOKEN_FILE)
 
 
-def _load_credentials():
+def _trainer_token_file(live_class):
+    """The batch's trainer's cached token, if they connected their own Google.
+
+    When present, events are created on the trainer's calendar so the trainer
+    becomes the Meet host. Otherwise we fall back to the central account.
+    """
+    inst_id = getattr(live_class.batch.course, "instructor_id", None)
+    if not inst_id:
+        return None
+    path = os.path.join(settings.GOOGLE_TRAINER_TOKEN_DIR, f"{inst_id}.json")
+    return path if os.path.exists(path) else None
+
+
+def _token_file_for_class(live_class):
+    """Pick the trainer's token (host = trainer) or fall back to the central one."""
+    trainer = _trainer_token_file(live_class)
+    if trainer:
+        return trainer
+    central = settings.GOOGLE_OAUTH_TOKEN_FILE
+    return central if os.path.exists(central) else None
+
+
+def can_create_meet(live_class) -> bool:
+    """True if we have a usable token (trainer's or central) to create a Meet."""
+    return _client_configured() and _token_file_for_class(live_class) is not None
+
+
+def _load_credentials(token_file=None):
     try:
         from google.auth.transport.requests import Request
         from google.oauth2.credentials import Credentials
@@ -52,10 +79,10 @@ def _load_credentials():
             "pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib"
         ) from exc
 
-    token_file = settings.GOOGLE_OAUTH_TOKEN_FILE
+    token_file = token_file or settings.GOOGLE_OAUTH_TOKEN_FILE
     if not os.path.exists(token_file):
         raise GoogleMeetUnavailable(
-            "Not authorized yet. Run `python manage.py google_auth` once."
+            "Not authorized yet. Connect Google from the admin or Trainer Studio."
         )
 
     creds = Credentials.from_authorized_user_file(token_file, SCOPES)
@@ -64,16 +91,16 @@ def _load_credentials():
         with open(token_file, "w", encoding="utf-8") as fh:
             fh.write(creds.to_json())
     if not creds or not creds.valid:
-        raise GoogleMeetUnavailable("Stored Google credentials are invalid; re-run google_auth.")
+        raise GoogleMeetUnavailable("Stored Google credentials are invalid; reconnect Google.")
     return creds
 
 
-def _service():
+def _service(token_file=None):
     try:
         from googleapiclient.discovery import build
     except ImportError as exc:  # pragma: no cover
         raise GoogleMeetUnavailable("google-api-python-client not installed.") from exc
-    return build("calendar", "v3", credentials=_load_credentials(), cache_discovery=False)
+    return build("calendar", "v3", credentials=_load_credentials(token_file), cache_discovery=False)
 
 
 def create_meet_event(live_class) -> tuple[str, str]:
@@ -81,8 +108,12 @@ def create_meet_event(live_class) -> tuple[str, str]:
 
     Returns ``(meet_link, google_event_id)``.
     Raises ``GoogleMeetUnavailable`` if it can't run.
+
+    The event is created on the batch trainer's calendar when they've connected
+    their own Google (so the trainer is the host); otherwise on the central
+    account's calendar.
     """
-    service = _service()
+    service = _service(_token_file_for_class(live_class))
 
     start = live_class.start_time
     end = live_class.end_time
@@ -127,12 +158,13 @@ def create_meet_event(live_class) -> tuple[str, str]:
     return meet_link, event.get("id", "")
 
 
-def delete_meet_event(google_event_id: str) -> None:
+def delete_meet_event(google_event_id: str, live_class=None) -> None:
     """Best-effort cleanup of a Calendar event when a class is removed."""
     if not google_event_id:
         return
+    token_file = _token_file_for_class(live_class) if live_class is not None else None
     try:
-        _service().events().delete(
+        _service(token_file).events().delete(
             calendarId=settings.GOOGLE_CALENDAR_ID, eventId=google_event_id
         ).execute()
     except Exception:

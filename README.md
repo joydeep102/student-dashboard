@@ -286,6 +286,16 @@ same web OAuth client as "Sign in with Google":
 > For **YouTube**, sign in with the Google account that owns the target channel
 > so uploads land there. The connect links are admin-only.
 
+### Trainer as the Meet host
+By default the Meet host is the central connected account. To make a **trainer
+the host of their own batch's classes**, the trainer opens **Trainer Studio →
+Live classes** and clicks **Connect Google (be the host)** (signs in with their
+own Google — Gmail or Workspace). Their token is cached per-user in
+`secrets/trainer_tokens/<id>.json`, and from then on that batch's Meet events
+are created on the **trainer's** calendar, so the trainer is the host and
+eligible students are invited. If a trainer hasn't connected, it falls back to
+the central account.
+
 ## Troubleshooting
 
 ### "Sign in with Google" — `Error 400: redirect_uri_mismatch`
