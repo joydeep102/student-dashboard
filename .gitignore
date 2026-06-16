@@ -10,8 +10,9 @@ db.sqlite3
 /staticfiles/
 *.log
 
-# Secrets (Google OAuth) — real files ignored, only *.example.json templates tracked
-/secrets/
+# Secrets (Google OAuth) — ignore real files, keep only templates/placeholders.
+# Ignore the dir CONTENTS (not the dir) so the !exceptions below can re-include.
+/secrets/*
 !/secrets/.gitkeep
 !/secrets/*.example.json
 
