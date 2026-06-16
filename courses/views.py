@@ -177,6 +177,48 @@ def lesson_source(request, code, pk):
 
 
 def pricing(request):
-    """Public pricing page built from the active plans."""
-    plans = Plan.objects.filter(is_active=True).order_by("level")
-    return render(request, "courses/pricing.html", {"plans": plans})
+    """Public pricing page. Each plan's CTA opens WhatsApp with a message
+    pre-filled from the logged-in student's profile (name, email, current plan,
+    batch) plus the plan they want to upgrade to."""
+    from urllib.parse import urlencode
+
+    from django.conf import settings
+
+    plans = list(Plan.objects.filter(is_active=True).order_by("level"))
+    phone = getattr(settings, "WHATSAPP_PHONE", "917029490341")
+
+    user = request.user
+    name = email = current_plan = batches = ""
+    if user.is_authenticated:
+        name = user.display_name
+        email = user.email
+        enrolls = list(
+            BatchEnrollment.objects.filter(student=user, is_active=True)
+            .select_related("batch", "plan")
+        )
+        if enrolls:
+            current_plan = max(enrolls, key=lambda e: e.plan.level).plan.name
+            batches = ", ".join(sorted({e.batch.name for e in enrolls}))
+
+    cards = []
+    for p in plans:
+        price = f"₹{int(p.price):,}"
+        term = f"{p.duration_months} Month" + ("s" if p.duration_months != 1 else "")
+        if user.is_authenticated:
+            text = "\n".join([
+                f"Hi Fighter Bull's! I want to upgrade to *{p.name}* ({price} / {term}).",
+                "",
+                f"Name: {name or '-'}",
+                f"Email: {email or '-'}",
+                f"Current plan: {current_plan or '-'}",
+                f"Batch: {batches or '-'}",
+            ])
+        else:
+            text = (
+                f"Hi Fighter Bull's! I'm interested in the *{p.name}* course "
+                f"({price} / {term}). Please share the next steps."
+            )
+        params = {"phone": phone, "text": text, "type": "phone_number", "app_absent": "0"}
+        cards.append({"plan": p, "wa_url": "https://api.whatsapp.com/send/?" + urlencode(params)})
+
+    return render(request, "courses/pricing.html", {"plan_cards": cards})

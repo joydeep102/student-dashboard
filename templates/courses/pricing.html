@@ -9,18 +9,19 @@
 </div>
 
 <div class="price-grid">
-    {% for plan in plans %}
-    <div class="price-card animate-up accent-{{ plan.accent }} {% if plan.is_highlighted %}highlight{% endif %}">
-        {% if plan.badge %}<div class="price-badge">{{ plan.badge }}</div>{% endif %}
-        <div class="price-name">{{ plan.name }}</div>
-        <div class="price-amount"><span class="cur">₹</span>{{ plan.price|floatformat:0|intcomma }}</div>
-        <div class="price-term">{{ plan.duration_months }} MONTH{{ plan.duration_months|pluralize:",S" }}</div>
+    {% for card in plan_cards %}
+    <div class="price-card animate-up accent-{{ card.plan.accent }} {% if card.plan.is_highlighted %}highlight{% endif %}">
+        {% if card.plan.badge %}<div class="price-badge">{{ card.plan.badge }}</div>{% endif %}
+        <div class="price-name">{{ card.plan.name }}</div>
+        <div class="price-amount"><span class="cur">₹</span>{{ card.plan.price|floatformat:0|intcomma }}</div>
+        <div class="price-term">{{ card.plan.duration_months }} MONTH{{ card.plan.duration_months|pluralize:",S" }}</div>
         <ul class="price-features">
-            {% for f in plan.feature_list %}
+            {% for f in card.plan.feature_list %}
             <li><span class="tick">✓</span> {{ f }}</li>
             {% endfor %}
         </ul>
-        <a class="price-cta" href="{% if user.is_authenticated %}{% url 'courses:dashboard' %}{% else %}{% url 'accounts:login' %}{% endif %}">Enroll Now</a>
+        <a class="price-cta" href="{{ card.wa_url }}" target="_blank" rel="noopener">
+            {% if user.is_authenticated %}💬 Upgrade on WhatsApp{% else %}💬 Enquire on WhatsApp{% endif %}</a>
     </div>
     {% empty %}
     <div class="empty">Plans will appear here once your admin adds them.</div>

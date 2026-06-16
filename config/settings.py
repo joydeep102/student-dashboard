@@ -200,3 +200,7 @@ GOOGLE_LOGIN_REDIRECT_URI = os.environ.get(
     _glogin.get("redirect_uri", "http://127.0.0.1:8000/accounts/google/callback/"),
 )
 GOOGLE_LOGIN_ENABLED = bool(GOOGLE_LOGIN_CLIENT_ID and GOOGLE_LOGIN_CLIENT_SECRET)
+
+# WhatsApp number (international format, no +) the pricing-page "upgrade" button
+# opens a chat with. Override per deployment via the WHATSAPP_PHONE env var.
+WHATSAPP_PHONE = os.environ.get("WHATSAPP_PHONE", "917029490341")
