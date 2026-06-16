@@ -20,6 +20,9 @@
         {% elif card.is_upgrade %}
         <div class="price-amount"><span class="cur">₹</span>{{ card.amount_value|intcomma }}</div>
         <div class="price-term">to upgrade from {{ current_plan }} · full {{ card.plan.price|floatformat:0|intcomma }}</div>
+        {% elif card.is_lower %}
+        <div class="price-amount" style="font-size:1.2rem; color:var(--muted);">Lower than your plan</div>
+        <div class="price-term">included in your {{ current_plan }} plan</div>
         {% else %}
         <div class="price-amount"><span class="cur">₹</span>{{ card.plan.price|floatformat:0|intcomma }}</div>
         <div class="price-term">{{ card.plan.duration_months }} MONTH{{ card.plan.duration_months|pluralize:",S" }}</div>
@@ -31,6 +34,8 @@
         </ul>
         {% if card.is_current %}
         <span class="price-cta is-disabled" aria-disabled="true">✓ Your current plan</span>
+        {% elif card.is_lower %}
+        <span class="price-cta is-disabled" aria-disabled="true">Downgrade not available</span>
         {% elif card.is_upgrade %}
         <a class="price-cta" href="{{ card.wa_url }}" target="_blank" rel="noopener">💬 Upgrade for ₹{{ card.amount_value|intcomma }}</a>
         {% else %}

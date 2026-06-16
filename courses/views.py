@@ -209,6 +209,7 @@ def pricing(request):
         term = f"{p.duration_months} Month" + ("s" if p.duration_months != 1 else "")
         is_current = current_level is not None and p.level == current_level
         is_upgrade = current_level is not None and p.level > current_level
+        is_lower = current_level is not None and p.level < current_level
         # Amount shown/charged: the difference to upgrade, else the full price.
         amount_value = int(p.price - current_price) if is_upgrade else int(p.price)
         full_price = f"₹{int(p.price):,}"
@@ -251,6 +252,7 @@ def pricing(request):
             "wa_url": "https://api.whatsapp.com/send/?" + urlencode(params),
             "is_current": is_current,
             "is_upgrade": is_upgrade,
+            "is_lower": is_lower,
             "amount_value": amount_value,
         })
 
