@@ -61,12 +61,21 @@ class CourseAdmin(admin.ModelAdmin):
 
 @admin.register(Batch)
 class BatchAdmin(admin.ModelAdmin):
-    list_display = ("name", "course", "student_count", "schedule_summary", "is_active")
-    list_filter = ("is_active", "course")
+    list_display = ("name", "course", "trainer", "student_count", "schedule_summary", "is_active")
+    list_filter = ("is_active", "course", "instructor")
     search_fields = ("name", "code", "course__title")
     prepopulated_fields = {"code": ("name",)}
-    autocomplete_fields = ["course"]
+    autocomplete_fields = ["course", "instructor"]
+    fieldsets = (
+        (None, {"fields": ("course", "name", "code", "instructor", "is_active")}),
+        ("Schedule", {"fields": ("start_date", "end_date")}),
+        ("About", {"fields": ("description",)}),
+    )
     inlines = [ScheduleSlotInline, BatchEnrollmentInline, LessonInline, LiveClassInline]
+
+    @admin.display(description="Trainer")
+    def trainer(self, obj):
+        return obj.trainer or "—"
 
 
 @admin.register(Lesson)

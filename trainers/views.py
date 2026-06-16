@@ -68,10 +68,12 @@ def upload(request):
 
 
 def _can_teach(user, batch):
-    """A trainer may conduct a batch whose course they instruct (admins: any)."""
+    """A trainer may conduct a batch they're assigned to (its own instructor or
+    the course instructor). Admins may conduct any batch."""
     return (
         user.is_superuser
         or getattr(user, "role", None) == "admin"
+        or batch.instructor_id == user.id
         or batch.course.instructor_id == user.id
     )
 
@@ -79,10 +81,14 @@ def _can_teach(user, batch):
 @trainer_required
 def live(request):
     """Trainer's live-class console: weekly schedule + start today's class."""
+    from django.db.models import Q
+
     batches = (
-        Batch.objects.filter(is_active=True, course__instructor=request.user)
+        Batch.objects.filter(is_active=True)
+        .filter(Q(instructor=request.user) | Q(course__instructor=request.user))
         .prefetch_related("schedule_slots", "schedule_slots__required_plan")
         .select_related("course")
+        .distinct()
     )
     today = timezone.localdate()
     today_wd = today.weekday()

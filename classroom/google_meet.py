@@ -48,7 +48,8 @@ def _trainer_token_file(live_class):
     When present, events are created on the trainer's calendar so the trainer
     becomes the Meet host. Otherwise we fall back to the central account.
     """
-    inst_id = getattr(live_class.batch.course, "instructor_id", None)
+    batch = live_class.batch
+    inst_id = batch.instructor_id or getattr(batch.course, "instructor_id", None)
     if not inst_id:
         return None
     path = os.path.join(settings.GOOGLE_TRAINER_TOKEN_DIR, f"{inst_id}.json")

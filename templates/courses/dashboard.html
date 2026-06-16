@@ -120,8 +120,8 @@
                 <div class="bc-body">
                     <div class="bc-name">{{ b.batch.name }}</div>
                     <div class="bc-course">{{ b.batch.course.title }}</div>
-                    {% if b.batch.course.instructor %}
-                    <div class="bc-trainer">👨‍🏫 {{ b.batch.course.instructor.display_name }}</div>
+                    {% if b.batch.trainer %}
+                    <div class="bc-trainer">👨‍🏫 {{ b.batch.trainer.display_name }}</div>
                     {% endif %}
                     <div class="bc-progress">
                         <div class="bc-bar"><span style="width: {{ b.pct }}%"></span></div>

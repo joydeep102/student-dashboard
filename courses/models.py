@@ -103,6 +103,15 @@ class Batch(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="batches")
     name = models.CharField(max_length=100, help_text="e.g. 'Batch 01'")
     code = models.SlugField(max_length=60, unique=True, blank=True)
+    instructor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="batches_taught",
+        limit_choices_to={"role__in": ["instructor", "admin"]},
+        help_text="Trainer who conducts this batch. Leave blank to use the course instructor.",
+    )
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     description = models.TextField(blank=True)
@@ -129,6 +138,11 @@ class Batch(models.Model):
 
     def get_absolute_url(self):
         return reverse("courses:batch", kwargs={"code": self.code})
+
+    @property
+    def trainer(self):
+        """The batch's trainer: its own instructor, else the course instructor."""
+        return self.instructor or (self.course.instructor if self.course_id else None)
 
     @property
     def student_count(self):

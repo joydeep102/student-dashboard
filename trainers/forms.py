@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 
 from courses.models import Batch, Plan
 
@@ -20,7 +21,10 @@ class VideoSubmissionForm(forms.ModelForm):
         # Trainers post to batches of the courses they teach; fall back to all
         # active batches so the portal is usable even before assignment.
         batches = Batch.objects.filter(is_active=True).select_related("course")
-        own = batches.filter(course__instructor=trainer) if trainer else batches.none()
+        own = (
+            batches.filter(Q(instructor=trainer) | Q(course__instructor=trainer)).distinct()
+            if trainer else batches.none()
+        )
         self.fields["batch"].queryset = own if own.exists() else batches
         self.fields["batch"].empty_label = None
         self.fields["required_plan"].queryset = Plan.objects.filter(is_active=True)
