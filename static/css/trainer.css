@@ -8,6 +8,14 @@
 .host-banner div { flex: 1; min-width: 240px; font-size: .9rem; }
 .host-banner strong { color: var(--text); }
 
+/* Upcoming class rows with a copyable Meet link */
+.up-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0; }
+.up-when { font-weight: 600; font-size: .88rem; }
+.meet-link-field { flex: 1; min-width: 180px; max-width: 360px; padding: 7px 10px;
+    border: 1px solid var(--border-strong); border-radius: 9px; background: #f7faf8;
+    font-size: .8rem; color: var(--muted); cursor: pointer; }
+.ln-actions .meet-link-field { max-width: 280px; }
+
 .upload-form { max-width: 640px; background: #fff; border: 1px solid var(--border); border-radius: 18px;
     padding: 26px; box-shadow: var(--shadow-sm); margin-top: 12px; }
 .upload-form select, .upload-form input[type=text], .upload-form textarea, .upload-form input[type=file] {

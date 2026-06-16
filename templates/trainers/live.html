@@ -64,7 +64,11 @@
         <span class="badge badge-live"><span class="dot"></span> LIVE NOW</span>
         <span class="ln-title">{{ lc.title }}</span>
         <div class="ln-actions">
-            {% if lc.meet_link %}<a class="btn btn-sm" href="{{ lc.meet_link }}" target="_blank">Rejoin Meet</a>{% endif %}
+            {% if lc.meet_link %}
+            <a class="btn btn-sm" href="{{ lc.meet_link }}" target="_blank">▶ Join as host</a>
+            <input class="meet-link-field" type="text" value="{{ lc.meet_link }}" readonly
+                   title="Click to copy" onclick="this.select();document.execCommand('copy');">
+            {% endif %}
             <form method="post" action="{% url 'trainers:end_live' lc.pk %}">{% csrf_token %}
                 <button class="btn btn-ghost btn-sm" type="submit">End class</button></form>
         </div>
@@ -77,7 +81,16 @@
     <div class="lb-upcoming">
         <div class="sr-label">Upcoming scheduled:</div>
         {% for lc in row.upcoming %}
-        <span class="day-chip">📅 {{ lc.start_time|date:"D d M, g:i A" }}{% if lc.meet_link %} · link ✓{% else %} · no link{% endif %}</span>
+        <div class="up-row">
+            <span class="up-when">📅 {{ lc.start_time|date:"D d M, g:i A" }}</span>
+            {% if lc.meet_link %}
+            <a class="btn btn-sm" href="{{ lc.meet_link }}" target="_blank">▶ Join as host</a>
+            <input class="meet-link-field" type="text" value="{{ lc.meet_link }}" readonly
+                   title="Click to copy" onclick="this.select();document.execCommand('copy');">
+            {% else %}
+            <span class="badge badge-ended">no link yet</span>
+            {% endif %}
+        </div>
         {% endfor %}
     </div>
     {% endif %}
