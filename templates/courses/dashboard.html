@@ -40,6 +40,24 @@
 <div class="dash-grid">
     <!-- Main column -->
     <div class="dash-main">
+        {% if pending_homework %}
+        <div class="hw-pending-card animate-up">
+            <div class="sec-head"><h2>📝 Pending homework</h2></div>
+            <div class="list">
+                {% for t in pending_homework %}
+                <div class="list-row">
+                    <div class="icon">📝</div>
+                    <div class="grow">
+                        <div class="row-title">{{ t.title }}</div>
+                        <div class="row-meta">{{ t.batch.name }} · not submitted yet</div>
+                    </div>
+                    <a class="btn btn-sm" href="{% url 'homework:submit' t.pk %}">Submit</a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if next_class %}
         <div class="feature-card animate-up">
             <div class="fc-top">

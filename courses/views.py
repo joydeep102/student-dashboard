@@ -62,6 +62,28 @@ def dashboard(request):
 
     top_plan = max((e.plan for e in enrollments), key=lambda p: p.level, default=None)
 
+    # Homework the student hasn't submitted yet (shown until they submit).
+    pending_homework = []
+    if plan_by_batch:
+        from homework.models import HomeTask, HomeworkSubmission
+
+        tasks = (
+            HomeTask.objects.filter(live_class__batch_id__in=plan_by_batch.keys())
+            .select_related("live_class", "live_class__batch")
+            .prefetch_related("allowed_plans")
+            .order_by("-created_at")
+        )
+        submitted = set(
+            HomeworkSubmission.objects.filter(student=request.user).values_list(
+                "hometask_id", flat=True
+            )
+        )
+        pending_homework = [
+            t
+            for t in tasks
+            if t.is_open_to(plan_by_batch.get(t.live_class.batch_id)) and t.id not in submitted
+        ]
+
     return render(
         request,
         "courses/dashboard.html",
@@ -72,6 +94,7 @@ def dashboard(request):
             "next_class": next_class,
             "continue_lesson": continue_lesson,
             "top_plan": top_plan,
+            "pending_homework": pending_homework,
             "stats": {
                 "batches": len(enrollments),
                 "lessons": lessons_available,
