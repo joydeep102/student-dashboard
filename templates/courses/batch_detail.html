@@ -12,6 +12,7 @@
         <span class="hello">{{ batch.course.title }}</span>
         <h1>{{ batch.name }}</h1>
         <p>{% if batch.start_date %}Started {{ batch.start_date|date:"d M Y" }} · {% endif %}{{ stats.lessons_unlocked }} of {{ stats.lessons_total }} classes unlocked</p>
+        {% if batch.course.instructor %}<p class="batch-trainer">👨‍🏫 Trainer: <strong>{{ batch.course.instructor.display_name }}</strong></p>{% endif %}
         {% if batch.schedule_summary %}<p class="batch-sched">🗓 Live class days: <strong>{{ batch.schedule_summary }}</strong></p>{% endif %}
         <div class="hero-progress">
             <div class="hp-bar"><span style="width: {{ stats.lessons_pct }}%"></span></div>
