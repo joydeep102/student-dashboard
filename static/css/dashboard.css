@@ -112,6 +112,13 @@
 .bc-course { color: var(--muted); font-size: .83rem; margin-top: 2px; }
 .bc-trainer { color: var(--muted); font-size: .8rem; margin-top: 4px; font-weight: 600; }
 .batch-trainer { margin: 2px 0; opacity: .95; }
+
+/* Disabled pricing CTA (student's current plan) */
+.price-cta.is-disabled {
+    border: 1.5px solid #cbd5e1 !important; color: #94a3b8 !important;
+    background: #f1f5f9 !important; cursor: not-allowed; pointer-events: none; filter: none; }
+.price-card.highlight .price-cta.is-disabled {
+    background: rgba(255,255,255,.18) !important; color: #e2e8f0 !important; border-color: transparent !important; }
 .bc-progress { margin-top: 14px; }
 .bc-bar { height: 8px; border-radius: 99px; background: #eef0f4; overflow: hidden; }
 .bc-bar span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg,#4cc466,#19b036); transition: width .6s ease; }

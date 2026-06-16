@@ -29,10 +29,13 @@
             <li><span class="tick">✓</span> {{ f }}</li>
             {% endfor %}
         </ul>
-        <a class="price-cta" href="{{ card.wa_url }}" target="_blank" rel="noopener">
-            {% if card.is_current %}💬 Contact on WhatsApp
-            {% elif card.is_upgrade %}💬 Upgrade for ₹{{ card.amount_value|intcomma }}
-            {% else %}💬 Enquire on WhatsApp{% endif %}</a>
+        {% if card.is_current %}
+        <span class="price-cta is-disabled" aria-disabled="true">✓ Your current plan</span>
+        {% elif card.is_upgrade %}
+        <a class="price-cta" href="{{ card.wa_url }}" target="_blank" rel="noopener">💬 Upgrade for ₹{{ card.amount_value|intcomma }}</a>
+        {% else %}
+        <a class="price-cta" href="{{ card.wa_url }}" target="_blank" rel="noopener">💬 Enquire on WhatsApp</a>
+        {% endif %}
     </div>
     {% empty %}
     <div class="empty">Plans will appear here once your admin adds them.</div>
