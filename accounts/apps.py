@@ -59,6 +59,42 @@ class AccountsConfig(AppConfig):
                 "calendar": calendar_connected(),
                 "youtube": youtube_connected(),
             }
+
+            # --- Chart data ---------------------------------------------------
+            import calendar as _cal
+            from django.db.models import Count
+
+            # Enrollments per month (last 6 months)
+            y, m = now.year, now.month
+            seq = []
+            for i in range(5, -1, -1):
+                mm, yy = m - i, y
+                while mm <= 0:
+                    mm += 12
+                    yy -= 1
+                seq.append((yy, mm))
+            enroll_labels, enroll_counts = [], []
+            for yy, mm in seq:
+                enroll_labels.append(_cal.month_abbr[mm])
+                enroll_counts.append(
+                    BatchEnrollment.objects.filter(
+                        enrolled_at__year=yy, enrolled_at__month=mm
+                    ).count()
+                )
+
+            # Active students grouped by plan tier
+            plan_rows = (
+                BatchEnrollment.objects.filter(is_active=True)
+                .values("plan__name")
+                .annotate(c=Count("id"))
+                .order_by("plan__level")
+            )
+            extra_context["fb_charts"] = {
+                "enroll_labels": enroll_labels,
+                "enroll_counts": enroll_counts,
+                "plan_labels": [r["plan__name"] or "—" for r in plan_rows],
+                "plan_counts": [r["c"] for r in plan_rows],
+            }
             return original_index(request, extra_context)
 
         admin.site.index = index_with_dashboard

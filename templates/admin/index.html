@@ -16,7 +16,7 @@
 
 <!-- Stat cards -->
 <div class="fb-stats">
-    <a href="{% url 'admin:accounts_user_changelist' %}?role__exact=student" class="fb-stat">
+    <a href="{% url 'admin:accounts_user_changelist' %}?role__exact=student" class="fb-stat fb-accent">
         <div class="fb-stat-ic ic-students">🎓</div>
         <div class="fb-stat-num">{{ stats.students }}</div>
         <div class="fb-stat-label">Students</div>
@@ -31,7 +31,7 @@
         <div class="fb-stat-num">{{ stats.lessons }}</div>
         <div class="fb-stat-label">Recorded lessons</div>
     </a>
-    <a href="{% url 'admin:classroom_liveclass_changelist' %}" class="fb-stat">
+    <a href="{% url 'admin:classroom_liveclass_changelist' %}" class="fb-stat fb-accent fb-accent-2">
         <div class="fb-stat-ic ic-live">🎥</div>
         <div class="fb-stat-num">{{ stats.live_upcoming }}</div>
         <div class="fb-stat-label">Upcoming live classes</div>
@@ -47,6 +47,19 @@
         <div class="fb-stat-label">Videos to approve</div>
     </a>
 </div>
+
+<!-- Charts -->
+<div class="fb-charts">
+    <div class="fb-panel fb-chartcard fb-chart-wide">
+        <div class="fb-panel-head"><h2>Enrollments — last 6 months</h2></div>
+        <div class="fb-chartbox"><canvas id="chEnroll"></canvas></div>
+    </div>
+    <div class="fb-panel fb-chartcard">
+        <div class="fb-panel-head"><h2>Students by plan</h2></div>
+        <div class="fb-chartbox"><canvas id="chPlan"></canvas></div>
+    </div>
+</div>
+{{ fb_charts|json_script:"fb-chart-data" }}
 
 <!-- Board: actions on the left, live info panels on the right rail -->
 <div class="fb-board">
