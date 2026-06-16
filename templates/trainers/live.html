@@ -25,19 +25,6 @@
     Ask the admin to set you as the instructor of a course.</div>
 {% endif %}
 
-<!-- Be the Meet host: connect the trainer's own Google -->
-<div class="host-banner {% if host_connected %}ok{% endif %} animate-up">
-    {% if host_connected %}
-    <div><strong>✅ You're the meeting host.</strong> Your live classes are created on your Google
-        Calendar, so you host the Meet and students are invited automatically.</div>
-    <a class="btn btn-ghost btn-sm" href="{% url 'accounts:google_connect' %}?kind=trainer">Reconnect Google</a>
-    {% else %}
-    <div><strong>Become the meeting host.</strong> Connect your Google account so the Meet links for
-        your batches are created on <em>your</em> calendar — you'll be the host and students get invited.</div>
-    <a class="btn btn-sm" href="{% url 'accounts:google_connect' %}?kind=trainer">🔗 Connect Google (be the host)</a>
-    {% endif %}
-</div>
-
 {% for row in rows %}
 <div class="live-batch animate-up">
     <div class="lb-head">
