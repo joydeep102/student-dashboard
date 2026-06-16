@@ -26,11 +26,6 @@
         <div class="fb-stat-num">{{ stats.batches }}</div>
         <div class="fb-stat-label">Active batches</div>
     </a>
-    <a href="{% url 'admin:courses_lesson_changelist' %}" class="fb-stat">
-        <div class="fb-stat-ic ic-lessons">▶</div>
-        <div class="fb-stat-num">{{ stats.lessons }}</div>
-        <div class="fb-stat-label">Recorded lessons</div>
-    </a>
     <a href="{% url 'admin:classroom_liveclass_changelist' %}" class="fb-stat fb-accent fb-accent-2">
         <div class="fb-stat-ic ic-live">🎥</div>
         <div class="fb-stat-num">{{ stats.live_upcoming }}</div>
