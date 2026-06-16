@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Give homework — Trainer Studio{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{% static 'css/trainer.css' %}">{% endblock %}
+
+{% block content %}
+<a href="{% url 'homework:trainer_list' %}" class="back-link">← Homework</a>
+<div class="sec-head"><h2>📝 Give homework</h2></div>
+<p class="fb-sub">For <strong>{{ live_class.title }}</strong> · {{ live_class.batch.name }}
+   · plans: <strong>{{ live_class.plan_labels }}</strong> (only these students will see it).</p>
+
+<form method="post" class="upload-form">
+    {% csrf_token %}
+    <div class="field">
+        <label>Title</label>
+        {{ form.title }}
+        {% if form.title.errors %}<div class="reject-note">{{ form.title.errors|striptags }}</div>{% endif %}
+    </div>
+    <div class="field">
+        <label>Instructions</label>
+        {{ form.instructions }}
+    </div>
+    <div class="upload-actions">
+        <button class="btn" type="submit">Assign homework</button>
+        <a class="btn btn-ghost" href="{% url 'trainers:live' %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

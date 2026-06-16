@@ -25,7 +25,9 @@
         <nav class="topnav" id="mainnav">
             <a href="{% url 'courses:dashboard' %}">Dashboard</a>
             <a href="{% url 'courses:pricing' %}">Plans</a>
-            {% if user.role == 'instructor' or user.is_superuser %}<a href="{% url 'trainers:dashboard' %}">🎬 Trainer Studio</a>{% endif %}
+            {% if user.role == 'student' %}<a href="{% url 'homework:student_list' %}">📝 Homework</a>{% endif %}
+            {% if user.role == 'instructor' or user.is_superuser %}<a href="{% url 'trainers:dashboard' %}">🎬 Trainer Studio</a>
+            <a href="{% url 'homework:trainer_list' %}">📝 Homework</a>{% endif %}
             <a class="mob-link" href="{% url 'accounts:profile' %}">My Profile</a>
             {% if user.is_staff %}<a href="/admin/">Admin</a>{% endif %}
             <form action="{% url 'accounts:logout' %}" method="post" class="logout-form mob-link">

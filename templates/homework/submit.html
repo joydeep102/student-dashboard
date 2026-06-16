@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block title %}{{ ht.title }} — Homework{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{% static 'css/trainer.css' %}">{% endblock %}
+
+{% block content %}
+<a href="{% url 'homework:student_list' %}" class="back-link">← Homework</a>
+<div class="sec-head"><h2>{{ ht.title }}</h2></div>
+<p class="fb-sub">{{ ht.batch.name }} · {{ ht.live_class.title }}</p>
+{% if ht.instructions %}<div class="hw-answer">{{ ht.instructions|linebreaksbr }}</div>{% endif %}
+
+{% if sub and sub.overall != 'pending' %}
+<div class="host-banner {% if sub.overall == 'correct' %}ok{% endif %}">
+    <div>
+        <strong>
+        {% if sub.overall == 'correct' %}✅ Correct{% else %}❌ Needs work{% endif %}</strong>
+        {% if sub.remarks %}<br>Trainer remarks: {{ sub.remarks|linebreaksbr }}{% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% if sub and sub.images.all %}
+<div class="sec-head"><h2>Your photos</h2></div>
+<div class="hw-grid">
+    {% for img in sub.images.all %}
+    <div class="hw-img verdict-{{ img.verdict }}">
+        <a href="{{ img.image.url }}" target="_blank"><img src="{{ img.image.url }}" alt="your submission"></a>
+        <div class="hw-verdict">
+            {% if img.verdict == 'correct' %}✅ Correct{% elif img.verdict == 'wrong' %}❌ Wrong{% else %}⏳ Not marked{% endif %}
+            {% if img.note %}<small>{{ img.note }}</small>{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="upload-form">
+    {% csrf_token %}
+    <div class="field">
+        <label>Your answer</label>
+        {{ form.answer_text }}
+    </div>
+    <div class="field">
+        <label>Attach photos (you can select multiple)</label>
+        <div class="file-drop">
+            <input type="file" name="images" accept="image/*" multiple>
+            <div class="fd-hint">JPG/PNG. Adding photos again will append to your submission.</div>
+        </div>
+    </div>
+    <div class="upload-actions">
+        <button class="btn" type="submit">{% if sub %}Update submission{% else %}Submit homework{% endif %}</button>
+    </div>
+</form>
+{% endblock %}

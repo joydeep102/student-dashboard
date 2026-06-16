@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block title %}{{ ht.title }} — submissions{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{% static 'css/trainer.css' %}">{% endblock %}
+
+{% block content %}
+<a href="{% url 'homework:trainer_list' %}" class="back-link">← Homework</a>
+<div class="sec-head"><h2>{{ ht.title }}</h2></div>
+<p class="fb-sub">{{ ht.batch.name }} · plans: {{ ht.plan_labels }}
+   {% if ht.images_purged %} · 🧹 submission images were auto-cleared{% endif %}</p>
+
+{% if subs %}
+<div class="class-list">
+    {% for s in subs %}
+    <div class="class-card animate-up">
+        <div class="cc-date"><span class="cc-day">{{ s.images.count }}</span><span class="cc-mon">imgs</span></div>
+        <div class="cc-body">
+            <div class="cc-title">{{ s.student.display_name }}</div>
+            <div class="cc-meta">submitted {{ s.submitted_at|naturaltime }}
+                {% if s.overall == 'correct' %} · <span class="fb-pill ok">Correct</span>
+                {% elif s.overall == 'wrong' %} · <span class="fb-pill warn">Needs work</span>
+                {% else %} · <span class="badge badge-soon">Pending</span>{% endif %}</div>
+        </div>
+        <div class="cc-action">
+            <a class="btn btn-sm" href="{% url 'homework:review' s.pk %}">Review</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty">No student has submitted this homework yet.</div>
+{% endif %}
+{% endblock %}

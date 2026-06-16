@@ -56,6 +56,7 @@
             <input class="meet-link-field" type="text" value="{{ lc.meet_link }}" readonly
                    title="Click to copy" onclick="this.select();document.execCommand('copy');">
             {% endif %}
+            <a class="btn btn-ghost btn-sm" href="{% url 'homework:give' lc.pk %}">📝 Give homework</a>
             <form method="post" action="{% url 'trainers:end_live' lc.pk %}">{% csrf_token %}
                 <button class="btn btn-ghost btn-sm" type="submit">End class</button></form>
         </div>
@@ -77,6 +78,7 @@
             {% else %}
             <span class="badge badge-ended">no link yet</span>
             {% endif %}
+            <a class="btn btn-ghost btn-sm" href="{% url 'homework:give' lc.pk %}">📝 Give homework</a>
         </div>
         {% endfor %}
     </div>

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block title %}Review — {{ sub.student.display_name }}{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{% static 'css/trainer.css' %}">{% endblock %}
+
+{% block content %}
+<a href="{% url 'homework:submissions' sub.hometask_id %}" class="back-link">← Submissions</a>
+<div class="sec-head"><h2>{{ sub.student.display_name }}</h2></div>
+<p class="fb-sub">{{ sub.hometask.title }} · submitted {{ sub.submitted_at|naturaltime }}</p>
+
+{% if sub.answer_text %}<div class="hw-answer"><strong>Answer:</strong> {{ sub.answer_text|linebreaksbr }}</div>{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="sec-head"><h2>Photos — mark each</h2></div>
+    {% if sub.images.all %}
+    <div class="hw-grid">
+        {% for img in sub.images.all %}
+        <div class="hw-img verdict-{{ img.verdict }}">
+            <a href="{{ img.image.url }}" target="_blank"><img src="{{ img.image.url }}" alt="submission"></a>
+            <select name="img_{{ img.id }}">
+                <option value="none" {% if img.verdict == 'none' %}selected{% endif %}>— not marked</option>
+                <option value="correct" {% if img.verdict == 'correct' %}selected{% endif %}>✅ Correct</option>
+                <option value="wrong" {% if img.verdict == 'wrong' %}selected{% endif %}>❌ Wrong</option>
+            </select>
+            <input type="text" name="note_{{ img.id }}" value="{{ img.note }}" placeholder="Note (optional)">
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">No images{% if sub.hometask.images_purged %} (auto-cleared to save storage){% endif %}.</div>
+    {% endif %}
+
+    <div class="field" style="margin-top:18px;">
+        <label>Overall result</label>
+        <select name="overall" class="meet-input" style="max-width:260px;">
+            <option value="pending" {% if sub.overall == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="correct" {% if sub.overall == 'correct' %}selected{% endif %}>✅ Correct</option>
+            <option value="wrong" {% if sub.overall == 'wrong' %}selected{% endif %}>❌ Needs work</option>
+        </select>
+    </div>
+    <div class="field">
+        <label>Remarks to the student</label>
+        <textarea name="remarks" rows="3" placeholder="Feedback…">{{ sub.remarks }}</textarea>
+    </div>
+    <div class="upload-actions">
+        <button class="btn" type="submit">Save feedback</button>
+    </div>
+</form>
+{% endblock %}

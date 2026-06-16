@@ -186,6 +186,7 @@ def start_live(request, slot_id):
             )
             lc.allowed_plans.set(_selected_plans(request, slot))
             ensure_meet_link(lc)  # synchronous; reads allowed_plans we just set
+        _purge_old_homework_images()
 
     if lc.meet_link:
         return redirect(lc.meet_link)
@@ -195,6 +196,16 @@ def start_live(request, slot_id):
         "Connect Google above (or add a link to this class) so students can join.",
     )
     return redirect("trainers:live")
+
+
+def _purge_old_homework_images():
+    """Free storage: drop homework images once 2+ later classes have run."""
+    try:
+        from homework.models import purge_due_homework_images
+
+        purge_due_homework_images()
+    except Exception:  # never block class creation on cleanup
+        pass
 
 
 def _selected_plans(request, slot):
@@ -255,6 +266,7 @@ def schedule_live(request, slot_id):
         )
         lc.allowed_plans.set(_selected_plans(request, slot))
         ensure_meet_link(lc)  # synchronous; reads allowed_plans we just set
+    _purge_old_homework_images()
 
     when = start.strftime("%a %d %b, %I:%M %p")
     if lc.meet_link:

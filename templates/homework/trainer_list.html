@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block title %}Homework — Trainer Studio{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{% static 'css/trainer.css' %}">{% endblock %}
+
+{% block content %}
+<div class="sec-head"><h2>📝 Homework you assigned</h2>
+    <a class="btn btn-ghost btn-sm" href="{% url 'trainers:live' %}">🔴 Live classes</a></div>
+
+{% if rows %}
+<div class="class-list">
+    {% for r in rows %}
+    <div class="class-card animate-up">
+        <div class="cc-date"><span class="cc-day">📝</span></div>
+        <div class="cc-body">
+            <div class="cc-title">{{ r.task.title }}</div>
+            <div class="cc-meta">{{ r.task.batch.name }} · {{ r.task.live_class.title }}
+                · plans: {{ r.task.plan_labels }} · {{ r.task.created_at|naturaltime }}
+                {% if r.task.images_purged %} · 🧹 images cleared{% endif %}</div>
+        </div>
+        <div class="cc-action">
+            <a class="btn btn-sm" href="{% url 'homework:submissions' r.task.pk %}">
+                {{ r.count }} submission{{ r.count|pluralize }}{% if r.pending %} · {{ r.pending }} to review{% endif %}</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty">No homework assigned yet.<br>
+    Open a class in <a href="{% url 'trainers:live' %}">Live classes</a> and use <strong>Give homework</strong>.</div>
+{% endif %}
+{% endblock %}

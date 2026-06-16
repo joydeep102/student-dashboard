@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block title %}Homework — Fighter Bull's{% endblock %}
+
+{% block content %}
+<div class="sec-head"><h2>📝 My homework</h2></div>
+
+{% if rows %}
+<div class="list">
+    {% for r in rows %}
+    <div class="list-row animate-up">
+        <div class="icon">📝</div>
+        <div class="grow">
+            <div class="row-title">{{ r.task.title }}</div>
+            <div class="row-meta">{{ r.task.batch.name }} · {{ r.task.created_at|naturaltime }}</div>
+        </div>
+        {% if r.sub %}
+            {% if r.sub.overall == 'correct' %}<span class="badge badge-plan plan-green">✅ Correct</span>
+            {% elif r.sub.overall == 'wrong' %}<span class="badge badge-locked">❌ Needs work</span>
+            {% else %}<span class="badge badge-soon">⏳ Submitted</span>{% endif %}
+            <a class="btn btn-ghost btn-sm" href="{% url 'homework:submit' r.task.pk %}">View / edit</a>
+        {% else %}
+            <a class="btn btn-sm" href="{% url 'homework:submit' r.task.pk %}">Submit</a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty">No homework yet. Your trainer will assign tasks after live classes.</div>
+{% endif %}
+{% endblock %}
