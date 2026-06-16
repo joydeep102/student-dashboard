@@ -120,7 +120,7 @@ def create_meet_event(live_class) -> tuple[str, str]:
     end = live_class.end_time
     event_body = {
         "summary": live_class.title,
-        "description": live_class.description or f"Live class: {live_class.course.title}",
+        "description": live_class.description or f"Live class: {live_class.batch.course.title}",
         "start": {"dateTime": start.isoformat(), "timeZone": settings.TIME_ZONE},
         "end": {"dateTime": end.isoformat(), "timeZone": settings.TIME_ZONE},
         "conferenceData": {

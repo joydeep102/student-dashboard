@@ -191,8 +191,8 @@ def start_live(request, slot_id):
         return redirect(lc.meet_link)
     messages.warning(
         request,
-        "Class started, but no Google Meet link was generated (Google not connected). "
-        "Add a meeting link to this class so students can join.",
+        "Class started, but the Google Meet link couldn't be generated. "
+        "Connect Google above (or add a link to this class) so students can join.",
     )
     return redirect("trainers:live")
 
@@ -257,8 +257,8 @@ def schedule_live(request, slot_id):
     else:
         messages.warning(
             request,
-            f"Class scheduled for {when}, but no Google Meet link was generated "
-            "(Google not connected). Add a meeting link from the admin so students can join.",
+            f"Class scheduled for {when}, but the Google Meet link couldn't be "
+            "generated. Connect Google above (or add a link from the admin) so students can join.",
         )
     return redirect("trainers:live")
 
