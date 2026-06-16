@@ -192,34 +192,36 @@ a:link, a:visited { color: var(--link-fg); }
 /* ===========================================================
    Left nav sidebar — collapsible app groups (accordion) + search
    =========================================================== */
-#nav-sidebar { background: #fff; border-right: 1px solid var(--border-color); padding-bottom: 16px; }
-#nav-sidebar .module { border: 0; box-shadow: none; background: transparent; margin: 0 0 2px; border-radius: 0; }
+#nav-sidebar { background: #fff; border-right: 1px solid var(--border-color); padding: 6px 0 16px; }
+#nav-sidebar .module { border: 0; box-shadow: none; background: transparent; margin: 0; border-radius: 0; }
 #nav-sidebar table { width: 100%; }
 
-/* App header = clickable accordion toggle */
+/* App header = slim, flat accordion toggle (no heavy filled box) */
 #nav-sidebar caption {
-    cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px;
-    padding: 10px 12px; margin: 3px 8px; border-radius: 10px;
-    background: #f4f6fb; color: var(--body-loud-color);
-    font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
-    transition: background .15s; text-align: left;
+    cursor: pointer; user-select: none; display: flex; align-items: center; gap: 9px;
+    padding: 8px 12px; margin: 1px 8px; border-radius: 8px;
+    background: transparent; color: var(--body-quiet-color);
+    font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    line-height: 1.25; transition: background .14s, color .14s; text-align: left;
 }
-#nav-sidebar caption:hover { background: #e9eef7; }
+#nav-sidebar caption:hover { background: #f5f7fb; color: var(--body-loud-color); }
+#nav-sidebar .module:not(.fb-collapsed) > table > caption { color: var(--body-loud-color); }
+#nav-sidebar .module.current-app > table > caption { color: var(--primary); }
 #nav-sidebar caption a.section { color: inherit !important; text-transform: inherit;
     font-weight: inherit; flex: 1; text-decoration: none; }
-#nav-sidebar caption::after { content: "\25B8"; margin-left: auto; font-size: .8rem;
-    color: var(--body-quiet-color); transition: transform .15s; }
-#nav-sidebar .module:not(.fb-collapsed) > table > caption::after { transform: rotate(90deg); }
+#nav-sidebar caption::after { content: "\25B8"; margin-left: auto; font-size: .62rem;
+    color: #c0c6d0; transition: transform .15s, color .15s; }
+#nav-sidebar .module:not(.fb-collapsed) > table > caption::after { transform: rotate(90deg); color: var(--primary); }
 #nav-sidebar .module.fb-collapsed tr { display: none; }
 
-/* Model rows */
+/* Model rows — light and tight */
 #nav-sidebar tr { background: transparent; }
 #nav-sidebar tr > * { border: 0; padding: 0; }
 #nav-sidebar th a, #nav-sidebar td a {
-    display: block; padding: 7px 12px 7px 26px; margin: 1px 8px; border-radius: 8px;
-    font-size: .86rem; font-weight: 600; color: var(--body-fg) !important; text-decoration: none; }
-#nav-sidebar th a:hover, #nav-sidebar td a:hover { background: #eef7f0; }
-#nav-sidebar .current-model th a { background: #e6f7ea; color: #0a7d20 !important; font-weight: 800; }
+    display: block; padding: 6px 12px 6px 32px; margin: 1px 8px; border-radius: 7px;
+    font-size: .84rem; font-weight: 500; color: var(--body-fg) !important; text-decoration: none; }
+#nav-sidebar th a:hover, #nav-sidebar td a:hover { background: #f0f8f2; }
+#nav-sidebar .current-model th a { background: #e6f7ea; color: #0a7d20 !important; font-weight: 700; }
 
 /* Search box (Django's #nav-filter, restyled) */
 #nav-sidebar #nav-filter {
@@ -233,7 +235,7 @@ a:link, a:visited { color: var(--link-fg); }
 #nav-sidebar #nav-filter.no-results { border-color: #f6c768; background-color: #fff8ec; }
 
 /* App icons in the left nav */
-#nav-sidebar .module > table > caption a.section::before { margin-right: 8px; font-size: .95rem; content: "📁"; }
+#nav-sidebar .module > table > caption a.section::before { margin-right: 7px; font-size: .82rem; opacity: .85; content: "📁"; }
 #nav-sidebar .app-accounts caption a.section::before { content: "👤"; }
 #nav-sidebar .app-auth caption a.section::before { content: "🔐"; }
 #nav-sidebar .app-courses caption a.section::before { content: "📚"; }
