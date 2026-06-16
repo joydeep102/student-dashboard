@@ -1,0 +1,143 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block coltype %}colMS{% endblock %}
+{% block bodyclass %}{{ block.super }} dashboard fb-dashboard{% endblock %}
+
+{% block content %}
+{% with stats=fb_stats %}
+
+<div class="fb-welcome">
+    <div>
+        <h1 class="fb-h1">Welcome back 👋</h1>
+        <p class="fb-sub">Here's what's happening across your courses today.</p>
+    </div>
+</div>
+
+<!-- Stat cards -->
+<div class="fb-stats">
+    <a href="{% url 'admin:accounts_user_changelist' %}?role__exact=student" class="fb-stat">
+        <div class="fb-stat-ic ic-students">🎓</div>
+        <div class="fb-stat-num">{{ stats.students }}</div>
+        <div class="fb-stat-label">Students</div>
+    </a>
+    <a href="{% url 'admin:courses_batch_changelist' %}" class="fb-stat">
+        <div class="fb-stat-ic ic-courses">👥</div>
+        <div class="fb-stat-num">{{ stats.batches }}</div>
+        <div class="fb-stat-label">Active batches</div>
+    </a>
+    <a href="{% url 'admin:courses_lesson_changelist' %}" class="fb-stat">
+        <div class="fb-stat-ic ic-lessons">▶</div>
+        <div class="fb-stat-num">{{ stats.lessons }}</div>
+        <div class="fb-stat-label">Recorded lessons</div>
+    </a>
+    <a href="{% url 'admin:classroom_liveclass_changelist' %}" class="fb-stat">
+        <div class="fb-stat-ic ic-live">🎥</div>
+        <div class="fb-stat-num">{{ stats.live_upcoming }}</div>
+        <div class="fb-stat-label">Upcoming live classes</div>
+    </a>
+    <a href="{% url 'admin:courses_batchenrollment_changelist' %}" class="fb-stat">
+        <div class="fb-stat-ic ic-enroll">✅</div>
+        <div class="fb-stat-num">{{ stats.enrollments }}</div>
+        <div class="fb-stat-label">Active enrollments</div>
+    </a>
+    <a href="{% url 'admin:trainers_videosubmission_changelist' %}?status__exact=pending" class="fb-stat {% if stats.pending_videos %}fb-stat-alert{% endif %}">
+        <div class="fb-stat-ic ic-video">🎬</div>
+        <div class="fb-stat-num">{{ stats.pending_videos }}</div>
+        <div class="fb-stat-label">Videos to approve</div>
+    </a>
+</div>
+
+<!-- Quick actions -->
+<h2 class="fb-section">Quick actions</h2>
+<div class="fb-actions">
+    <a href="{% url 'admin:accounts_user_add' %}" class="fb-action">
+        <span class="fb-action-ic">➕</span>
+        <span><strong>Add student</strong><small>Create a new student account</small></span>
+    </a>
+    <a href="{% url 'admin:courses_batch_add' %}" class="fb-action">
+        <span class="fb-action-ic">👥</span>
+        <span><strong>New batch</strong><small>Start a batch & add students + videos</small></span>
+    </a>
+    <a href="{% url 'admin:classroom_liveclass_add' %}" class="fb-action">
+        <span class="fb-action-ic">📅</span>
+        <span><strong>Schedule live class</strong><small>Auto-creates a Google Meet link</small></span>
+    </a>
+    <a href="{% url 'admin:courses_batchenrollment_add' %}" class="fb-action">
+        <span class="fb-action-ic">🔗</span>
+        <span><strong>Enroll student</strong><small>Add a student to a batch on a plan</small></span>
+    </a>
+    <a href="{% url 'admin:trainers_videosubmission_changelist' %}?status__exact=pending" class="fb-action">
+        <span class="fb-action-ic">🎬</span>
+        <span><strong>Review trainer videos</strong><small>Approve &amp; publish to YouTube</small></span>
+    </a>
+</div>
+
+<div class="fb-cols">
+    <!-- Upcoming classes -->
+    <div class="fb-panel">
+        <div class="fb-panel-head"><h2>Upcoming live classes</h2>
+            <a href="{% url 'admin:classroom_liveclass_changelist' %}">View all</a></div>
+        {% if fb_upcoming %}
+        <ul class="fb-listing">
+            {% for lc in fb_upcoming %}
+            <li>
+                <a href="{% url 'admin:classroom_liveclass_change' lc.pk %}">
+                    <span class="fb-li-title">{{ lc.title }}</span>
+                    <span class="fb-li-meta">{{ lc.batch.name }} · {{ lc.start_time|date:"d M, g:i A" }}</span>
+                </a>
+                {% if lc.meet_link %}<span class="fb-pill ok">link ✓</span>{% else %}<span class="fb-pill warn">no link</span>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}<p class="fb-empty">No upcoming classes scheduled.</p>{% endif %}
+    </div>
+
+    <!-- Recent students -->
+    <div class="fb-panel">
+        <div class="fb-panel-head"><h2>Newest students</h2>
+            <a href="{% url 'admin:accounts_user_changelist' %}?role__exact=student">View all</a></div>
+        {% if fb_students %}
+        <ul class="fb-listing">
+            {% for s in fb_students %}
+            <li>
+                <a href="{% url 'admin:accounts_user_change' s.pk %}">
+                    <span class="fb-li-title">{{ s.display_name }}</span>
+                    <span class="fb-li-meta">{{ s.email }} · joined {{ s.date_joined|date:"d M Y" }}</span>
+                </a>
+                {% if s.is_active %}<span class="fb-pill ok">active</span>{% else %}<span class="fb-pill warn">inactive</span>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}<p class="fb-empty">No students yet. Add your first one above.</p>{% endif %}
+    </div>
+</div>
+
+<!-- Trainer videos awaiting approval -->
+{% if fb_pending_videos %}
+<div class="fb-panel fb-approve">
+    <div class="fb-panel-head"><h2>🎬 Videos awaiting your approval</h2>
+        <a href="{% url 'admin:trainers_videosubmission_changelist' %}?status__exact=pending">Review all</a></div>
+    <ul class="fb-listing">
+        {% for v in fb_pending_videos %}
+        <li>
+            <a href="{% url 'admin:trainers_videosubmission_change' v.pk %}">
+                <span class="fb-li-title">{{ v.title }}</span>
+                <span class="fb-li-meta">{{ v.trainer.display_name }} · {{ v.batch.name }} · {{ v.created_at|date:"d M, g:i A" }}</span>
+            </a>
+            <span class="fb-pill warn">pending</span>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<!-- Standard app/model list (collapsible reference) -->
+<h2 class="fb-section">All management sections</h2>
+<div class="fb-applist">
+    {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+</div>
+{% endwith %}
+{% endblock %}
+
+{% block sidebar %}{% endblock %}

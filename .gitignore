@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.env
+
+# Django
+db.sqlite3
+/media/
+/staticfiles/
+*.log
+
+# Secrets (Google OAuth)
+/secrets/
+!/secrets/.gitkeep
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}{{ live_class.title }} — Live class{% endblock %}
+{% block content %}
+<div class="empty" style="max-width:560px; margin:50px auto;">
+    <div style="font-size:2.5rem;">🎥</div>
+    <h1 style="margin-top:10px;">{{ live_class.title }}</h1>
+    <p>{{ live_class.batch.name }} · {{ live_class.batch.course.title }}</p>
+
+    {% if live_class.live_state == "upcoming" %}
+        <p class="subtitle">This class starts {{ live_class.start_time|naturaltime }}
+            ({{ live_class.start_time|date:"D, d M · g:i A" }}).</p>
+        <p>The <strong>Join</strong> button activates 10 minutes before start.</p>
+        <button class="btn" disabled>Not started yet</button>
+    {% elif live_class.live_state == "ended" %}
+        <p class="subtitle">This class has ended.</p>
+        <p>A recording may be added to the course lessons soon.</p>
+    {% elif not live_class.meet_link %}
+        <p class="subtitle">The meeting link isn't ready yet. Please check back shortly.</p>
+    {% else %}
+        <a class="btn btn-live" href="{{ live_class.meet_link }}">Join live class</a>
+    {% endif %}
+
+    <div style="margin-top:18px;">
+        <a class="card-meta" href="{{ live_class.batch.get_absolute_url }}">← Back to batch</a>
+    </div>
+</div>
+{% endblock %}

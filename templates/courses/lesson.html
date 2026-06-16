@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ lesson.title }} — {{ batch.name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+    <a href="{{ batch.get_absolute_url }}" class="card-meta">← {{ batch.name }}</a>
+    <h1 style="margin-top:6px;">{{ lesson.title }}</h1>
+</div>
+
+<div class="player-layout">
+    <div>
+        <!-- Branded player: video plays here with no YouTube chrome.
+             Source loaded from data-source-url, never in the HTML. -->
+        <div class="vplayer" id="vplayer"
+             data-source-url="{% url 'courses:lesson_source' batch.code lesson.pk %}">
+            <div class="loading">Loading player…</div>
+        </div>
+
+        {% if lesson.description %}
+        <p style="color:var(--muted); margin-top:16px;">{{ lesson.description }}</p>
+        {% endif %}
+
+        <div class="lesson-nav">
+            {% if prev_lesson %}
+            <a class="btn btn-ghost btn-sm" href="{% url 'courses:lesson' batch.code prev_lesson.pk %}">← Previous</a>
+            {% else %}<span></span>{% endif %}
+            {% if next_lesson %}
+            <a class="btn btn-sm" href="{% url 'courses:lesson' batch.code next_lesson.pk %}">Next →</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <aside class="playlist">
+        <h3>Batch content</h3>
+        {% for l in lessons %}
+        {% if l.unlocked %}
+        <a class="playlist-item {% if l.obj.pk == lesson.pk %}active{% endif %}"
+           href="{% url 'courses:lesson' batch.code l.obj.pk %}">
+            <div class="num">{{ forloop.counter }}</div>
+            <div>
+                <div class="pl-title">{{ l.obj.title }}</div>
+                {% if l.obj.duration_display %}<div class="pl-meta">{{ l.obj.duration_display }}</div>{% endif %}
+            </div>
+        </a>
+        {% else %}
+        <div class="playlist-item locked">
+            <div class="num">🔒</div>
+            <div>
+                <div class="pl-title">{{ l.obj.title }}</div>
+                <div class="pl-meta">Requires {{ l.obj.required_plan.name }}</div>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </aside>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<script src="{% static 'js/player.js' %}"></script>
+{% endblock %}

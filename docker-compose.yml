@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-fighterbulls}
+      POSTGRES_USER: ${POSTGRES_USER:-fbuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-db-pass}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fbuser} -d ${POSTGRES_DB:-fighterbulls}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-me-in-production}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-}
+      DJANGO_TIME_ZONE: ${DJANGO_TIME_ZONE:-Asia/Kolkata}
+      POSTGRES_DB: ${POSTGRES_DB:-fighterbulls}
+      POSTGRES_USER: ${POSTGRES_USER:-fbuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-db-pass}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      # Set to 1 to load demo data on first boot
+      SEED_DEMO: ${SEED_DEMO:-0}
+    volumes:
+      - media:/app/media
+      - staticfiles:/app/staticfiles
+      # Google OAuth client secret + cached tokens (kept out of the image)
+      - ./secrets:/app/secrets
+    ports:
+      # host:container  -> reach the app at http://localhost:6262
+      - "6262:8000"
+
+volumes:
+  pgdata:
+  media:
+  staticfiles:

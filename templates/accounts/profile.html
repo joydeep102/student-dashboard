@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}My profile{% endblock %}
+{% block content %}
+<h1>My profile</h1>
+<div class="card" style="max-width:520px; padding:0;">
+    <div class="card-body">
+        <div class="field"><label>Name</label><div>{{ profile_user.get_full_name|default:"—" }}</div></div>
+        <div class="field"><label>Email (your login)</label><div>{{ profile_user.email }}</div></div>
+        <div class="field"><label>Phone</label><div>{{ profile_user.phone|default:"—" }}</div></div>
+        <div class="field"><label>Role</label><div>{{ profile_user.get_role_display }}</div></div>
+        <a class="btn btn-ghost btn-sm" href="{% url 'accounts:password_change' %}">Change password</a>
+    </div>
+</div>
+{% endblock %}

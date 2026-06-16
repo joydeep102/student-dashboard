@@ -1,0 +1,17 @@
+Django==6.0.6
+Pillow==12.2.0
+
+# Static file serving (production / Docker)
+whitenoise==6.8.2
+
+# WSGI server (Docker/production)
+gunicorn==23.0.0
+
+# PostgreSQL driver (used when POSTGRES_DB is set; psycopg 3)
+psycopg[binary]==3.2.3
+
+# Google Meet / Calendar + YouTube upload + Sign in with Google
+google-api-python-client==2.197.0
+google-auth==2.54.0
+google-auth-httplib2==0.4.0
+google-auth-oauthlib==1.4.0

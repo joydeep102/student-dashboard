@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block title %}Trainer Studio — Fighter Bull's{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{% static 'css/batch.css' %}">
+<link rel="stylesheet" href="{% static 'css/trainer.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="dash-hero animate-up">
+    <div class="dash-hero-text">
+        <span class="hello">Trainer Studio</span>
+        <h1>Hi {{ user.display_name }} 🎬</h1>
+        <p>Upload your class recordings — admin approves, then they publish to the batch.</p>
+        <div class="hero-chips">
+            <a class="plan-chip" href="{% url 'trainers:upload' %}">⬆ Upload new video</a>
+            <a class="plan-chip ghost" href="{% url 'trainers:live' %}">🔴 Live classes</a>
+        </div>
+    </div>
+    <div class="dash-hero-art"><span class="hero-bull">🎥</span></div>
+</section>
+
+<div class="stat-tiles">
+    <div class="stat-tile animate-up"><div class="st-ic ic-d">⏳</div>
+        <div><div class="st-num">{{ counts.pending }}</div><div class="st-lab">Pending review</div></div></div>
+    <div class="stat-tile animate-up"><div class="st-ic ic-a">✅</div>
+        <div><div class="st-num">{{ counts.approved }}</div><div class="st-lab">Published</div></div></div>
+    <div class="stat-tile animate-up"><div class="st-ic ic-b">🚫</div>
+        <div><div class="st-num">{{ counts.rejected }}</div><div class="st-lab">Rejected</div></div></div>
+</div>
+
+<div class="sec-head" style="margin-top:30px;"><h2>My submissions</h2>
+    <a class="btn btn-sm" href="{% url 'trainers:upload' %}">⬆ Upload</a></div>
+
+{% if submissions %}
+<div class="class-list">
+    {% for s in submissions %}
+    <div class="class-card animate-up">
+        <div class="cc-date {% if s.status != 'approved' %}muted{% endif %}"><span class="cc-day">🎞</span></div>
+        <div class="cc-body">
+            <div class="cc-title">{{ s.title }}</div>
+            <div class="cc-meta">{{ s.batch.name }} · submitted {{ s.created_at|naturaltime }}
+                {% if s.required_plan %} · needs {{ s.required_plan.name }}{% endif %}</div>
+            {% if s.status == 'rejected' and s.review_notes %}
+            <div class="reject-note">Admin: {{ s.review_notes }}</div>{% endif %}
+            {% if s.upload_state == 'failed' and s.error %}
+            <div class="reject-note">Upload failed — admin will retry.</div>{% endif %}
+        </div>
+        <div class="cc-action">
+            {% if s.status == 'pending' %}<span class="badge badge-soon">⏳ Pending review</span>
+            {% elif s.status == 'approved' %}<span class="badge badge-plan plan-green">✅ Published</span>
+                {% if s.youtube_id %}<a class="btn btn-ghost btn-sm" href="{{ s.youtube_url }}" target="_blank">View</a>{% endif %}
+            {% else %}<span class="badge badge-locked">🚫 Rejected</span>{% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty">You haven't uploaded any videos yet.
+    <div style="margin-top:14px;"><a class="btn btn-sm" href="{% url 'trainers:upload' %}">⬆ Upload your first video</a></div>
+</div>
+{% endif %}
+{% endblock %}

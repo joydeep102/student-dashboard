@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Live classes — Trainer Studio{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{% static 'css/batch.css' %}">
+<link rel="stylesheet" href="{% static 'css/trainer.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="dash-hero animate-up">
+    <div class="dash-hero-text">
+        <span class="hello">Trainer Studio</span>
+        <h1>Live classes 🔴</h1>
+        <p>Start your batch's live class on its scheduled day — today is <strong>{{ today_name }}</strong>.</p>
+        <div class="hero-chips">
+            <a class="plan-chip ghost" href="{% url 'trainers:dashboard' %}">📼 My videos</a>
+            <a class="plan-chip" href="{% url 'trainers:live' %}">🔴 Live classes</a>
+        </div>
+    </div>
+    <div class="dash-hero-art"><span class="hero-bull">🎙</span></div>
+</section>
+
+{% if not has_batches %}
+<div class="empty">You're not assigned to conduct any batch yet.<br>
+    Ask the admin to set you as the instructor of a course.</div>
+{% endif %}
+
+{% for row in rows %}
+<div class="live-batch animate-up">
+    <div class="lb-head">
+        <div>
+            <div class="lb-name">{{ row.batch.name }}</div>
+            <div class="lb-course">{{ row.batch.course.title }}</div>
+        </div>
+        <a class="btn btn-ghost btn-sm" href="{{ row.batch.get_absolute_url }}" target="_blank">Open batch</a>
+    </div>
+
+    <!-- weekly schedule -->
+    <div class="lb-schedule">
+        {% for s in row.slots %}
+        <span class="day-chip {% if s.weekday == None %}{% endif %}">{{ s.get_weekday_display|slice:":3" }} · {{ s.time_display }}</span>
+        {% empty %}
+        <span class="lb-noschedule">No weekly schedule set by admin yet.</span>
+        {% endfor %}
+    </div>
+
+    <!-- currently live -->
+    {% if row.live %}
+    {% for lc in row.live %}
+    <div class="live-now-row">
+        <span class="badge badge-live"><span class="dot"></span> LIVE NOW</span>
+        <span class="ln-title">{{ lc.title }}</span>
+        <div class="ln-actions">
+            {% if lc.meet_link %}<a class="btn btn-sm" href="{{ lc.meet_link }}" target="_blank">Rejoin Meet</a>{% endif %}
+            <form method="post" action="{% url 'trainers:end_live' lc.pk %}">{% csrf_token %}
+                <button class="btn btn-ghost btn-sm" type="submit">End class</button></form>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <!-- today's startable slots -->
+    {% if row.today_slots %}
+    <div class="start-row">
+        <div class="sr-label">Today's class{{ row.today_slots|pluralize }}:</div>
+        {% for s in row.today_slots %}
+        <form method="post" action="{% url 'trainers:start_live' s.pk %}" class="start-form">
+            {% csrf_token %}
+            <input type="text" name="meet_link" placeholder="Paste Meet link (optional)" class="meet-input">
+            <button class="btn btn-live btn-sm" type="submit">▶ Start {{ s.time_display }} class</button>
+        </form>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-today">No class scheduled for today ({{ today_name }}) for this batch.</div>
+    {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Upgrade to unlock{% endblock %}
+{% block content %}
+<div class="empty" style="max-width:560px; margin:56px auto;">
+    <div style="font-size:2.6rem;">🔒</div>
+    <h1 style="margin-top:10px;">This {{ kind }} needs a higher plan</h1>
+    <p><strong>{{ item.title }}</strong> is available on the
+        <strong>{{ item.required_plan.name }}</strong> plan and above.</p>
+    <p class="subtitle">You're in {{ batch.name }} on a lower plan, so this content is locked.
+        Upgrade your plan to continue with the batch.</p>
+    <div style="margin-top:16px; display:flex; gap:10px; justify-content:center;">
+        <a class="btn" href="{% url 'courses:pricing' %}">View plans &amp; upgrade</a>
+        <a class="btn btn-ghost" href="{{ batch.get_absolute_url }}">Back to batch</a>
+    </div>
+</div>
+{% endblock %}

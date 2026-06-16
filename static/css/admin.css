@@ -1,0 +1,149 @@
+/* ===========================================================
+   Fighter Bull's — Django Admin theme (forced LIGHT) + dashboard
+   =========================================================== */
+
+/* 1) Force a light palette and brand the admin's own variables.
+      These override Django's defaults for both light and dark mode. */
+:root,
+html[data-theme="light"],
+html[data-theme="dark"],
+html[data-theme="auto"] {
+    color-scheme: light;
+    --primary: #19b036;
+    --primary-fg: #ffffff;
+    --secondary: #19b036;
+    --accent: #7cb305;
+    --link-fg: #009614;
+    --link-hover-color: #19b036;
+    --link-selected-fg: #19b036;
+
+    --body-bg: #f4f6fb;
+    --body-fg: #1d2233;
+    --body-quiet-color: #6b7280;
+    --body-loud-color: #11131c;
+
+    --header-color: #ffffff;
+    --header-branding-color: #ffffff;
+    --header-bg: linear-gradient(100deg, #04200f 0%, #0a7d20 55%, #19b036 100%);
+    --header-link-color: #ffffff;
+
+    --breadcrumbs-fg: #fff2ec;
+    --breadcrumbs-link-fg: #ffffff;
+    --breadcrumbs-bg: #0a5223;
+
+    --button-bg: #19b036;
+    --button-fg: #fff;
+    --button-hover-bg: #009614;
+    --default-button-bg: #009614;
+    --default-button-hover-bg: #0a7d20;
+    --close-button-bg: #6b7280;
+
+    --object-tools-bg: #1d2233;
+    --object-tools-hover-bg: #000;
+
+    --message-success-bg: #e9f7ec;
+    --selected-bg: #e6f7ea;
+    --selected-row: #f1faf3;
+    --border-color: #e7eaf1;
+    --darkened-bg: #f7f8fb;
+    --hairline-color: #eceff4;
+}
+
+/* Force light even when the OS prefers dark */
+@media (prefers-color-scheme: dark) {
+    :root {
+        color-scheme: light;
+        --body-bg: #f4f6fb; --body-fg: #1d2233; --body-quiet-color: #6b7280;
+        --darkened-bg: #f7f8fb; --selected-row: #f1faf3; --border-color: #e7eaf1;
+    }
+    body { background: var(--body-bg); color: var(--body-fg); }
+    .module, .module caption, div.breadcrumbs, #content-related .module h2 { background: #fff; }
+}
+
+body { background: var(--body-bg); }
+
+/* 2) Header / branding */
+#header { padding: 12px 40px; box-shadow: 0 4px 16px rgba(10,125,32,.25); }
+.fb-brand { display: flex; align-items: center; gap: 12px; }
+.fb-brand img { height: 42px; width: auto; filter: drop-shadow(0 2px 6px rgba(0,0,0,.4)); }
+.fb-brand-text { color: #fff; font-weight: 800; font-size: 1.1rem; letter-spacing: .02em; }
+.fb-view-site { color: #fff !important; font-weight: 600; font-size: .85rem; opacity: .92; }
+.fb-view-site:hover { opacity: 1; }
+
+/* 3) Dashboard layout */
+.fb-welcome { margin: 8px 0 22px; }
+.fb-h1 { font-size: 1.7rem; margin: 0; letter-spacing: -.02em; color: var(--body-loud-color); }
+.fb-sub { color: var(--body-quiet-color); margin: 4px 0 0; }
+.fb-section { font-size: 1.05rem; margin: 30px 0 14px; color: var(--body-loud-color);
+    display: flex; align-items: center; gap: 9px; }
+.fb-section::before { content:""; width:5px; height:18px; border-radius:4px;
+    background: linear-gradient(180deg,#4cc466,#19b036); }
+
+/* Stat cards */
+.fb-stats { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.fb-stat { background: #fff; border: 1px solid var(--border-color); border-radius: 16px;
+    padding: 18px; text-decoration: none; color: inherit; box-shadow: 0 2px 10px rgba(29,34,51,.05);
+    transition: transform .18s, box-shadow .18s, border-color .18s; display: block;
+    animation: fbUp .5s cubic-bezier(.2,.7,.2,1) both; }
+.fb-stat:hover { transform: translateY(-5px); box-shadow: 0 14px 30px rgba(25,176,54,.16); border-color:#bfe6c6; }
+.fb-stats .fb-stat:nth-child(1){animation-delay:.03s}.fb-stats .fb-stat:nth-child(2){animation-delay:.08s}
+.fb-stats .fb-stat:nth-child(3){animation-delay:.13s}.fb-stats .fb-stat:nth-child(4){animation-delay:.18s}
+.fb-stats .fb-stat:nth-child(5){animation-delay:.23s}
+.fb-stat-ic { width: 46px; height: 46px; border-radius: 13px; display: flex; align-items: center;
+    justify-content: center; font-size: 1.4rem; margin-bottom: 12px; }
+.ic-students{background:#e6f7ea;color:#19b036}.ic-courses{background:#eaf2ff;color:#2563eb}
+.ic-lessons{background:#f3e8ff;color:#7c3aed}.ic-live{background:#ffe4e6;color:#e11d48}
+.ic-enroll{background:#eaf5d6;color:#4d7c0f}.ic-video{background:#fff1d6;color:#c2740a}
+.fb-stat.fb-stat-alert { border-color: #f6c768; box-shadow: 0 0 0 3px rgba(245,158,11,.12), 0 2px 10px rgba(29,34,51,.05); }
+.fb-stat.fb-stat-alert .fb-stat-num { color: #b45309; }
+.fb-approve { margin-top: 18px; border-color: #f6c768; }
+.fb-approve .fb-panel-head { background: #fff8ec; }
+.fb-stat-num { font-size: 2rem; font-weight: 800; line-height: 1; color: var(--body-loud-color); }
+.fb-stat-label { color: var(--body-quiet-color); font-size: .85rem; margin-top: 5px; font-weight: 600; }
+
+/* Quick actions */
+.fb-actions { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); }
+.fb-action { display: flex; align-items: center; gap: 14px; background: #fff; border: 1px solid var(--border-color);
+    border-radius: 14px; padding: 15px 17px; text-decoration: none; color: inherit; box-shadow: 0 2px 10px rgba(29,34,51,.05);
+    transition: transform .16s, box-shadow .16s, border-color .16s; }
+.fb-action:hover { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 12px 26px rgba(25,176,54,.14); }
+.fb-action-ic { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg,#4cc466,#19b036);
+    color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+.fb-action span span, .fb-action > span { display: flex; flex-direction: column; }
+.fb-action strong { font-size: .98rem; color: var(--body-loud-color); }
+.fb-action small { color: var(--body-quiet-color); font-size: .8rem; }
+
+/* Two-column panels */
+.fb-cols { display: grid; gap: 18px; grid-template-columns: 1fr 1fr; margin-top: 8px; }
+@media (max-width: 900px){ .fb-cols { grid-template-columns: 1fr; } }
+.fb-panel { background: #fff; border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 2px 10px rgba(29,34,51,.05); }
+.fb-panel-head { display: flex; justify-content: space-between; align-items: center; padding: 15px 18px;
+    border-bottom: 1px solid var(--hairline-color); background: #fafbfd; }
+.fb-panel-head h2 { margin: 0; font-size: 1rem; color: var(--body-loud-color); }
+.fb-panel-head a { font-size: .82rem; color: var(--link-fg); font-weight: 600; }
+.fb-listing { list-style: none; margin: 0; padding: 6px 0; }
+.fb-listing li { display: flex; align-items: center; gap: 10px; padding: 11px 18px; border-bottom: 1px solid var(--hairline-color); }
+.fb-listing li:last-child { border-bottom: none; }
+.fb-listing li a { flex: 1; display: flex; flex-direction: column; text-decoration: none; }
+.fb-listing li:hover { background: #f1faf3; }
+.fb-li-title { font-weight: 700; color: var(--body-loud-color); font-size: .92rem; }
+.fb-li-meta { color: var(--body-quiet-color); font-size: .8rem; }
+.fb-pill { font-size: .7rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.fb-pill.ok { background: #e9f7ec; color: #16a34a; }
+.fb-pill.warn { background: #fef3c7; color: #b45309; }
+.fb-empty { color: var(--body-quiet-color); padding: 18px; margin: 0; }
+
+/* App list as cards */
+.fb-applist .app-module, .fb-applist .module { border-radius: 14px; overflow: hidden; border: 1px solid var(--border-color); box-shadow: 0 2px 10px rgba(29,34,51,.05); }
+
+@keyframes fbUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce){ .fb-stat { animation: none; } }
+
+/* General admin polish for light theme */
+a:link, a:visited { color: var(--link-fg); }
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+    border-radius: 9px; font-weight: 700; }
+#content { padding: 24px 40px 40px; }
+.module h2, .module caption, .inline-group .tabular caption { border-radius: 0; }
+.object-tools a { border-radius: 8px; }

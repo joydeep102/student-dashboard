@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block title %}Plans & Pricing — Fighter Bull's{% endblock %}
+
+{% block content %}
+<div style="text-align:center; margin-bottom:8px;">
+    <h1>Choose your trading journey</h1>
+    <p class="subtitle">Trade Smarter, Not Harder — from Basics to Breakouts.</p>
+</div>
+
+<div class="price-grid">
+    {% for plan in plans %}
+    <div class="price-card animate-up accent-{{ plan.accent }} {% if plan.is_highlighted %}highlight{% endif %}">
+        {% if plan.badge %}<div class="price-badge">{{ plan.badge }}</div>{% endif %}
+        <div class="price-name">{{ plan.name }}</div>
+        <div class="price-amount"><span class="cur">₹</span>{{ plan.price|floatformat:0|intcomma }}</div>
+        <div class="price-term">{{ plan.duration_months }} MONTH{{ plan.duration_months|pluralize:",S" }}</div>
+        <ul class="price-features">
+            {% for f in plan.feature_list %}
+            <li><span class="tick">✓</span> {{ f }}</li>
+            {% endfor %}
+        </ul>
+        <a class="price-cta" href="{% if user.is_authenticated %}{% url 'courses:dashboard' %}{% else %}{% url 'accounts:login' %}{% endif %}">Enroll Now</a>
+    </div>
+    {% empty %}
+    <div class="empty">Plans will appear here once your admin adds them.</div>
+    {% endfor %}
+</div>
+
+<p style="text-align:center; color:var(--muted); margin-top:30px; font-size:.9rem;">
+    Enrollment is handled by our team — click <strong>Enroll Now</strong> and our admin will set up your account &amp; batch.
+</p>
+{% endblock %}

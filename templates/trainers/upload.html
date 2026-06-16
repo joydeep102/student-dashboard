@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Upload video — Trainer Studio{% endblock %}
+{% block head_extra %}
+<link rel="stylesheet" href="{% static 'css/batch.css' %}">
+<link rel="stylesheet" href="{% static 'css/trainer.css' %}">
+{% endblock %}
+
+{% block content %}
+<a href="{% url 'trainers:dashboard' %}" class="back-link">← Trainer Studio</a>
+<h1>Upload a class recording</h1>
+<p class="subtitle">Submit your video for admin approval. Once approved it's uploaded to YouTube
+    (unlisted) and published as a recorded class in the batch.</p>
+
+<form method="post" enctype="multipart/form-data" class="upload-form">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="form-error">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div class="field">
+        <label for="{{ form.batch.id_for_label }}">Batch</label>
+        {{ form.batch }}
+        {% if form.batch.errors %}<div class="form-error">{{ form.batch.errors|striptags }}</div>{% endif %}
+    </div>
+    <div class="field">
+        <label for="{{ form.title.id_for_label }}">Video title</label>
+        {{ form.title }}
+        {% if form.title.errors %}<div class="form-error">{{ form.title.errors|striptags }}</div>{% endif %}
+    </div>
+    <div class="field">
+        <label for="{{ form.description.id_for_label }}">Description <span class="opt">(optional)</span></label>
+        {{ form.description }}
+    </div>
+    <div class="field">
+        <label for="{{ form.required_plan.id_for_label }}">Minimum plan <span class="opt">(optional)</span></label>
+        {{ form.required_plan }}
+        <div class="hint">{{ form.required_plan.help_text }}</div>
+    </div>
+    <div class="field">
+        <label for="{{ form.video_file.id_for_label }}">Video file</label>
+        <div class="file-drop">
+            {{ form.video_file }}
+            <div class="fd-hint">📹 Choose a video file (MP4 recommended)</div>
+        </div>
+        {% if form.video_file.errors %}<div class="form-error">{{ form.video_file.errors|striptags }}</div>{% endif %}
+    </div>
+
+    <div class="upload-actions">
+        <button type="submit" class="btn">⬆ Submit for approval</button>
+        <a class="btn btn-ghost" href="{% url 'trainers:dashboard' %}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

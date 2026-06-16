@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block title %}Dashboard — Fighter Bull's{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<section class="dash-hero animate-up">
+    <div class="dash-hero-text">
+        <span class="hello">Welcome back</span>
+        <h1>{{ user.display_name }} 👋</h1>
+        <p>Trade Smarter, Not Harder — here's your learning hub.</p>
+        <div class="hero-chips">
+            {% if top_plan %}<span class="plan-chip plan-{{ top_plan.accent }}">⭐ {{ top_plan.name }} member</span>{% endif %}
+            <a class="plan-chip ghost" href="{% url 'courses:pricing' %}">View plans</a>
+        </div>
+    </div>
+    <div class="dash-hero-art"><img src="{% static 'images/logo.png' %}" alt=""></div>
+</section>
+
+<!-- Stat tiles -->
+<div class="stat-tiles">
+    <div class="stat-tile animate-up">
+        <div class="st-ic ic-a">📚</div>
+        <div><div class="st-num">{{ stats.batches }}</div><div class="st-lab">My batches</div></div>
+    </div>
+    <div class="stat-tile animate-up">
+        <div class="st-ic ic-b">🎥</div>
+        <div><div class="st-num">{{ stats.upcoming }}</div><div class="st-lab">Upcoming classes</div></div>
+    </div>
+    <div class="stat-tile animate-up">
+        <div class="st-ic ic-c">▶</div>
+        <div><div class="st-num">{{ stats.lessons }}</div><div class="st-lab">Lessons unlocked</div></div>
+    </div>
+    <div class="stat-tile animate-up">
+        <div class="st-ic ic-d">⭐</div>
+        <div><div class="st-num st-plan">{% if top_plan %}{{ top_plan.name }}{% else %}—{% endif %}</div><div class="st-lab">Your plan</div></div>
+    </div>
+</div>
+
+<div class="dash-grid">
+    <!-- Main column -->
+    <div class="dash-main">
+        {% if next_class %}
+        <div class="feature-card animate-up">
+            <div class="fc-top">
+                <span class="fc-eyebrow">
+                    {% if next_class.live_state == "live" %}<span class="badge badge-live"><span class="dot"></span> LIVE NOW</span>
+                    {% else %}NEXT LIVE CLASS{% endif %}
+                </span>
+                <span class="fc-batch">{{ next_class.batch.name }}</span>
+            </div>
+            <h2 class="fc-title">{{ next_class.title }}</h2>
+            <div class="fc-meta">
+                <span>🗓 {{ next_class.start_time|date:"D, d M" }}</span>
+                <span>⏰ {{ next_class.start_time|date:"g:i A" }}</span>
+                <span>⏳ {{ next_class.duration_minutes }} min</span>
+            </div>
+            <div class="fc-actions">
+                {% if next_class.live_state == "live" %}
+                <a class="btn btn-live" href="{% url 'classroom:join_live' next_class.pk %}">Join live class →</a>
+                {% else %}
+                <a class="btn" href="{% url 'classroom:join_live' next_class.pk %}">View details</a>
+                <span class="fc-countdown">starts {{ next_class.start_time|naturaltime }}</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if continue_lesson %}
+        <a class="resume-card animate-up" href="{% url 'courses:lesson' continue_lesson.batch.code continue_lesson.lesson.pk %}">
+            <div class="rc-thumb">▶</div>
+            <div class="rc-body">
+                <span class="rc-eyebrow">▶ RECORDED CLASS</span>
+                <div class="rc-title">{{ continue_lesson.lesson.title }}</div>
+                <div class="rc-meta">{{ continue_lesson.batch.name }}{% if continue_lesson.lesson.duration_display %} · {{ continue_lesson.lesson.duration_display }}{% endif %}</div>
+            </div>
+            <div class="rc-go">→</div>
+        </a>
+        {% endif %}
+
+        <div class="sec-head"><h2>Upcoming live classes</h2></div>
+        {% if upcoming %}
+        <div class="list">
+            {% for u in upcoming %}
+            <div class="list-row animate-up {% if not u.unlocked %}is-locked{% endif %}">
+                <div class="icon">{% if u.unlocked %}🎥{% else %}🔒{% endif %}</div>
+                <div class="grow">
+                    <div class="row-title">{{ u.obj.title }}</div>
+                    <div class="row-meta">{{ u.obj.batch.name }} · {{ u.obj.start_time|date:"D, d M · g:i A" }}</div>
+                </div>
+                {% if not u.unlocked %}
+                    <a class="btn btn-ghost btn-sm" href="{% url 'courses:pricing' %}">🔒 Upgrade</a>
+                {% elif u.obj.live_state == "live" %}
+                    <span class="badge badge-live"><span class="dot"></span> LIVE</span>
+                    <a class="btn btn-live btn-sm" href="{% url 'classroom:join_live' u.obj.pk %}">Join</a>
+                {% elif u.obj.live_state == "upcoming" %}
+                    <span class="badge badge-soon">{{ u.obj.start_time|naturaltime }}</span>
+                {% else %}
+                    <span class="badge badge-ended">Ended</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">No upcoming live classes for your plan right now.</div>
+        {% endif %}
+    </div>
+
+    <!-- Side column: batches -->
+    <aside class="dash-side">
+        <div class="sec-head"><h2>My batches</h2></div>
+        {% if batch_cards %}
+        <div class="batch-stack">
+            {% for b in batch_cards %}
+            <a class="batch-card animate-up" href="{{ b.batch.get_absolute_url }}">
+                <div class="bc-banner plan-{{ b.plan.accent }}">
+                    <span class="bc-plan">{{ b.plan.name }}</span>
+                    <span class="bc-emoji">📈</span>
+                </div>
+                <div class="bc-body">
+                    <div class="bc-name">{{ b.batch.name }}</div>
+                    <div class="bc-course">{{ b.batch.course.title }}</div>
+                    <div class="bc-progress">
+                        <div class="bc-bar"><span style="width: {{ b.pct }}%"></span></div>
+                        <div class="bc-prog-meta">{{ b.accessible }}/{{ b.total }} lessons unlocked{% if b.locked %} · {{ b.locked }} locked{% endif %}</div>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty">You're not in any batch yet.<br>Your administrator will add you soon.
+            <div style="margin-top:14px;"><a class="btn btn-sm" href="{% url 'courses:pricing' %}">View plans</a></div>
+        </div>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

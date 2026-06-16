@@ -1,0 +1,22 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | Fighter Bull's Admin{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+<link rel="icon" type="image/png" href="{% static 'images/logo.png' %}">
+<link rel="stylesheet" href="{% static 'css/admin.css' %}">
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+    <a href="{% url 'admin:index' %}" class="fb-brand">
+        <img src="{% static 'images/logo.png' %}" alt="Fighter Bull's">
+        <span class="fb-brand-text">Admin Panel</span>
+    </a>
+</div>
+{% endblock %}
+
+{% block nav-global %}
+<a href="/" class="fb-view-site" target="_blank">↗ View student portal</a>
+{% endblock %}

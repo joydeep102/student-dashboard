@@ -1,0 +1,74 @@
+/* ===========================================================
+   Fighter Bull's — Batch detail page (professional + mobile)
+   =========================================================== */
+.back-link { display: inline-block; color: var(--muted); font-weight: 600; font-size: .9rem; margin-bottom: 14px; }
+.back-link:hover { color: var(--primary); }
+.batch-desc { color: var(--muted); max-width: 720px; margin: 0 0 8px; }
+
+/* hero progress + art */
+.hero-progress { margin: 2px 0 16px; max-width: 360px; }
+.hp-bar { height: 9px; border-radius: 99px; background: rgba(255,255,255,.25); overflow: hidden; }
+.hp-bar span { display: block; height: 100%; border-radius: 99px; background: #fff; transition: width .7s ease; }
+.hero-bull { font-size: 4.5rem; filter: drop-shadow(0 8px 20px rgba(0,0,0,.3)); animation: floaty 5s ease-in-out infinite; }
+.batch-sched { color: #fff; opacity: .95; margin: -6px 0 14px; font-size: .9rem; }
+
+/* section count chip */
+.sec-count { font-size: .8rem; font-weight: 700; color: var(--muted); background: #fff; border: 1px solid var(--border);
+    padding: 5px 12px; border-radius: 999px; }
+
+/* ---- Live class cards (calendar block) ---- */
+.class-list { display: flex; flex-direction: column; gap: 12px; }
+.class-card { display: flex; align-items: center; gap: 16px; background: #fff; border: 1px solid var(--border);
+    border-radius: 15px; padding: 14px 18px; box-shadow: var(--shadow-sm);
+    transition: transform .16s, box-shadow .16s, border-color .16s; }
+.class-card:hover { transform: translateX(3px); box-shadow: var(--shadow); border-color: #bfe6c6; }
+.class-card.is-locked { opacity: .82; background: repeating-linear-gradient(45deg,#fff,#fff 12px,#fbfbfd 12px,#fbfbfd 24px); }
+.class-card.is-locked:hover { transform: none; border-color: var(--border); box-shadow: var(--shadow-sm); }
+.cc-date { width: 60px; height: 60px; flex-shrink: 0; border-radius: 13px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; color: #fff; background: linear-gradient(135deg,#0a7d20,#19b036);
+    line-height: 1; }
+.cc-date.muted { background: #eef0f4; color: var(--muted); }
+.cc-day { font-size: 1.45rem; font-weight: 800; }
+.cc-mon { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+.cc-body { flex: 1; min-width: 0; }
+.cc-title { font-weight: 700; font-size: 1.02rem; }
+.cc-meta { color: var(--muted); font-size: .84rem; margin-top: 3px; }
+.cc-action { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* ---- Recorded class cards (grid) ---- */
+.lesson-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
+.lesson-card { display: block; background: #fff; border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+    box-shadow: var(--shadow-sm); transition: transform .18s, box-shadow .18s, border-color .18s; }
+.lesson-card:hover { transform: translateY(-5px); box-shadow: var(--shadow); border-color: #bfe6c6; }
+.lc-thumb { position: relative; aspect-ratio: 16/9; background: linear-gradient(135deg,#0a7d20,#19b036);
+    display: flex; align-items: center; justify-content: center; }
+.lc-thumb.locked { background: linear-gradient(135deg,#9aa0ad,#c3c8d2); }
+.lc-play { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.92); color: #19b036;
+    display: flex; align-items: center; justify-content: center; font-size: 1.3rem; box-shadow: 0 6px 16px rgba(0,0,0,.25);
+    transition: transform .18s; }
+.lesson-card:hover .lc-play { transform: scale(1.12); }
+.lc-lock { font-size: 1.7rem; }
+.lc-num { position: absolute; top: 10px; left: 12px; color: #fff; font-weight: 800; font-size: .82rem;
+    background: rgba(0,0,0,.28); padding: 3px 9px; border-radius: 8px; }
+.lc-dur { position: absolute; bottom: 10px; right: 12px; color: #fff; font-size: .76rem; font-weight: 700;
+    background: rgba(0,0,0,.55); padding: 3px 8px; border-radius: 7px; }
+.lc-info { padding: 14px 16px; }
+.lc-title { font-weight: 700; font-size: 1rem; line-height: 1.3; }
+.lc-sub { color: var(--muted); font-size: .8rem; margin-top: 4px; }
+.lesson-card.locked .lc-title { color: var(--text); }
+.lc-upgrade { margin-top: 12px; }
+
+/* responsive */
+@media (max-width: 640px) {
+    .class-card { gap: 12px; padding: 12px 14px; flex-wrap: wrap; }
+    .cc-date { width: 52px; height: 52px; }
+    .cc-action { width: 100%; justify-content: flex-start; padding-left: 68px; }
+    .lesson-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .lc-info { padding: 11px 12px; }
+    .lc-title { font-size: .9rem; }
+    .lc-play { width: 44px; height: 44px; font-size: 1.1rem; }
+}
+@media (max-width: 400px) {
+    .lesson-grid { grid-template-columns: 1fr; }
+    .cc-action { padding-left: 0; }
+}

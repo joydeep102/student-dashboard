@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load humanize static %}
+{% block title %}{{ batch.name }} — Fighter Bull's{% endblock %}
+{% block head_extra %}<link rel="stylesheet" href="{% static 'css/batch.css' %}">{% endblock %}
+
+{% block content %}
+<a href="{% url 'courses:dashboard' %}" class="back-link">← Dashboard</a>
+
+<!-- Hero -->
+<section class="dash-hero animate-up">
+    <div class="dash-hero-text">
+        <span class="hello">{{ batch.course.title }}</span>
+        <h1>{{ batch.name }}</h1>
+        <p>{% if batch.start_date %}Started {{ batch.start_date|date:"d M Y" }} · {% endif %}{{ stats.lessons_unlocked }} of {{ stats.lessons_total }} classes unlocked</p>
+        {% if batch.schedule_summary %}<p class="batch-sched">🗓 Live class days: <strong>{{ batch.schedule_summary }}</strong></p>{% endif %}
+        <div class="hero-progress">
+            <div class="hp-bar"><span style="width: {{ stats.lessons_pct }}%"></span></div>
+        </div>
+        <div class="hero-chips">
+            <span class="plan-chip plan-{{ enrollment.plan.accent }}">⭐ {{ enrollment.plan.name }} plan</span>
+            <a class="plan-chip ghost" href="{% url 'courses:pricing' %}">⤴ Upgrade plan</a>
+        </div>
+    </div>
+    <div class="dash-hero-art"><span class="hero-bull">📈</span></div>
+</section>
+
+{% if batch.description %}<p class="batch-desc">{{ batch.description }}</p>{% endif %}
+
+<!-- Live classes -->
+<div class="sec-head"><h2>Live classes</h2>
+    <span class="sec-count">{{ stats.classes_unlocked }}/{{ stats.classes_total }} available</span></div>
+{% if classes_view %}
+<div class="class-list">
+    {% for c in classes_view %}
+    <div class="class-card animate-up {% if not c.unlocked %}is-locked{% endif %}">
+        <div class="cc-date {% if not c.unlocked %}muted{% endif %}">
+            <span class="cc-day">{{ c.obj.start_time|date:"d" }}</span>
+            <span class="cc-mon">{{ c.obj.start_time|date:"M" }}</span>
+        </div>
+        <div class="cc-body">
+            <div class="cc-title">{{ c.obj.title }}</div>
+            <div class="cc-meta">🕐 {{ c.obj.start_time|date:"g:i A" }} · {{ c.obj.duration_minutes }} min</div>
+        </div>
+        <div class="cc-action">
+            {% if not c.unlocked %}
+                <span class="badge badge-locked">🔒 Needs {{ c.obj.required_plan.name }}</span>
+                <a class="btn btn-ghost btn-sm" href="{% url 'courses:pricing' %}">Upgrade</a>
+            {% elif c.obj.live_state == "live" %}
+                <span class="badge badge-live"><span class="dot"></span> LIVE</span>
+                <a class="btn btn-live btn-sm" href="{% url 'classroom:join_live' c.obj.pk %}">Join</a>
+            {% elif c.obj.live_state == "upcoming" %}
+                <span class="badge badge-soon">{{ c.obj.start_time|naturaltime }}</span>
+            {% else %}
+                <span class="badge badge-ended">Ended</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty">No live classes scheduled yet.</div>
+{% endif %}
+
+<!-- Recorded classes -->
+<div class="sec-head"><h2>Recorded classes</h2>
+    <span class="sec-count">{{ stats.lessons_unlocked }}/{{ stats.lessons_total }} unlocked</span></div>
+{% if lessons_view %}
+<div class="lesson-grid">
+    {% for l in lessons_view %}
+    {% if l.unlocked %}
+    <a class="lesson-card animate-up" href="{% url 'courses:lesson' batch.code l.obj.pk %}">
+        <div class="lc-thumb">
+            <span class="lc-num">{{ forloop.counter|stringformat:"02d" }}</span>
+            <span class="lc-play">▶</span>
+            {% if l.obj.duration_display %}<span class="lc-dur">{{ l.obj.duration_display }}</span>{% endif %}
+        </div>
+        <div class="lc-info">
+            <div class="lc-title">{{ l.obj.title }}</div>
+            <div class="lc-sub">Recorded class</div>
+        </div>
+    </a>
+    {% else %}
+    <div class="lesson-card locked animate-up">
+        <div class="lc-thumb locked">
+            <span class="lc-num">{{ forloop.counter|stringformat:"02d" }}</span>
+            <span class="lc-lock">🔒</span>
+        </div>
+        <div class="lc-info">
+            <div class="lc-title">{{ l.obj.title }}</div>
+            <div class="lc-sub">Requires {{ l.obj.required_plan.name }}</div>
+            <a class="btn btn-ghost btn-sm lc-upgrade" href="{% url 'courses:pricing' %}">🔒 Upgrade to unlock</a>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty">No recorded classes published yet.</div>
+{% endif %}
+{% endblock %}
