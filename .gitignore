@@ -10,9 +10,10 @@ db.sqlite3
 /staticfiles/
 *.log
 
-# Secrets (Google OAuth)
+# Secrets (Google OAuth) — real files ignored, only *.example.json templates tracked
 /secrets/
 !/secrets/.gitkeep
+!/secrets/*.example.json
 
 # OS / editor
 .DS_Store
