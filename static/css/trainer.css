@@ -16,6 +16,14 @@
     font-size: .8rem; color: var(--muted); cursor: pointer; }
 .ln-actions .meet-link-field { max-width: 280px; }
 
+/* Plan picker on start/schedule forms */
+.plan-pick { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; width: 100%; margin-bottom: 8px; }
+.plan-pick-label { font-size: .82rem; font-weight: 700; color: var(--text); }
+.plan-chk { display: inline-flex; align-items: center; gap: 5px; font-size: .82rem;
+    background: #f4f6fb; padding: 4px 10px; border-radius: 999px; cursor: pointer; }
+.plan-chk input { accent-color: var(--primary); }
+.plan-hint { font-size: .75rem; color: var(--muted); }
+
 .upload-form { max-width: 640px; background: #fff; border: 1px solid var(--border); border-radius: 18px;
     padding: 26px; box-shadow: var(--shadow-sm); margin-top: 12px; }
 .upload-form select, .upload-form input[type=text], .upload-form textarea, .upload-form input[type=file] {

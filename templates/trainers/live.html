@@ -89,6 +89,14 @@
         {% for s in row.today_slots %}
         <form method="post" action="{% url 'trainers:start_live' s.pk %}" class="start-form">
             {% csrf_token %}
+            <div class="plan-pick">
+                <span class="plan-pick-label">For plans:</span>
+                {% for p in plans %}
+                <label class="plan-chk"><input type="checkbox" name="plans" value="{{ p.id }}"
+                    {% if p in s.allowed_plans.all %}checked{% endif %}> {{ p.name }}</label>
+                {% endfor %}
+                <span class="plan-hint">none ticked = everyone in batch</span>
+            </div>
             <input type="text" name="meet_link" placeholder="Paste Meet link (optional)" class="meet-input">
             <button class="btn btn-live btn-sm" type="submit">▶ Start {{ s.time_display }} class now</button>
         </form>
@@ -105,6 +113,14 @@
         {% for s in row.slots %}
         <form method="post" action="{% url 'trainers:schedule_live' s.pk %}" class="start-form">
             {% csrf_token %}
+            <div class="plan-pick">
+                <span class="plan-pick-label">For plans:</span>
+                {% for p in plans %}
+                <label class="plan-chk"><input type="checkbox" name="plans" value="{{ p.id }}"
+                    {% if p in s.allowed_plans.all %}checked{% endif %}> {{ p.name }}</label>
+                {% endfor %}
+                <span class="plan-hint">none ticked = everyone in batch</span>
+            </div>
             <button class="btn btn-ghost btn-sm" type="submit">📅 Schedule next {{ s.get_weekday_display|slice:":3" }} · {{ s.time_display }}</button>
         </form>
         {% endfor %}

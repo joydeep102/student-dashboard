@@ -48,11 +48,12 @@ def dashboard(request):
             LiveClass.objects.filter(batch_id__in=plan_by_batch.keys())
             .exclude(status=LiveClass.Status.CANCELLED)
             .filter(start_time__gte=timezone.now() - timezone.timedelta(hours=2))
-            .select_related("batch", "required_plan")
+            .select_related("batch")
+            .prefetch_related("allowed_plans")
             .order_by("start_time")[:12]
         )
         for lc in classes:
-            unlocked = plan_by_batch[lc.batch_id].level >= lc.required_level
+            unlocked = lc.is_open_to(plan_by_batch[lc.batch_id])
             upcoming.append({"obj": lc, "unlocked": unlocked})
             if unlocked and lc.live_state in ("upcoming", "live"):
                 upcoming_count += 1
@@ -87,12 +88,13 @@ def _batch_content(request, batch):
 
     live_classes = (
         batch.live_classes.exclude(status=LiveClass.Status.CANCELLED)
-        .select_related("required_plan")
+        .prefetch_related("allowed_plans")
         .order_by("start_time")
     )
     lessons = batch.lessons.select_related("required_plan").all()
 
-    classes_view = [{"obj": c, "unlocked": plan_level >= c.required_level} for c in live_classes]
+    plan = enrollment.plan if enrollment else None
+    classes_view = [{"obj": c, "unlocked": c.is_open_to(plan)} for c in live_classes]
     lessons_view = [{"obj": l, "unlocked": plan_level >= l.required_level} for l in lessons]
     return enrollment, classes_view, lessons_view
 

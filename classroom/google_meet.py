@@ -17,9 +17,12 @@ admin paste a Meet link manually — so nothing breaks out of the box.
 
 from __future__ import annotations
 
+import logging
 import os
 
 from django.conf import settings
+
+log = logging.getLogger(__name__)
 
 # Calendar read/write scope (needed to create events with conferencing).
 SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
@@ -157,6 +160,35 @@ def create_meet_event(live_class) -> tuple[str, str]:
                 meet_link = ep.get("uri", "")
                 break
     return meet_link, event.get("id", "")
+
+
+def ensure_meet_link(live_class) -> str:
+    """Create + persist a Meet link for ``live_class`` if missing and possible.
+
+    Reads the class's allowed_plans (must already be saved) to invite the right
+    students. Returns the link, or "" if it couldn't be generated.
+    """
+    if live_class.meet_link:
+        return live_class.meet_link
+    if not can_create_meet(live_class):
+        return ""
+    try:
+        meet_link, event_id = create_meet_event(live_class)
+    except GoogleMeetUnavailable as exc:
+        log.warning("Meet link not created for LiveClass %s: %s", live_class.pk, exc)
+        return ""
+    except Exception:
+        log.exception("Unexpected error creating Meet link for LiveClass %s", live_class.pk)
+        return ""
+    if meet_link:
+        from .models import LiveClass
+
+        LiveClass.objects.filter(pk=live_class.pk).update(
+            meet_link=meet_link, google_event_id=event_id
+        )
+        live_class.meet_link = meet_link
+        live_class.google_event_id = event_id
+    return meet_link
 
 
 def delete_meet_event(google_event_id: str, live_class=None) -> None:

@@ -4,11 +4,13 @@ from functools import wraps
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from classroom.google_meet import ensure_meet_link
 from classroom.models import LiveClass
-from courses.models import Batch, BatchScheduleSlot
+from courses.models import Batch, BatchScheduleSlot, Plan
 
 from .forms import VideoSubmissionForm
 from .models import VideoSubmission
@@ -130,6 +132,8 @@ def live(request):
             }
         )
 
+    plans = list(Plan.objects.filter(is_active=True).order_by("level"))
+
     return render(
         request,
         "trainers/live.html",
@@ -137,6 +141,7 @@ def live(request):
             "rows": rows,
             "today_name": today.strftime("%A"),
             "has_batches": bool(rows),
+            "plans": plans,
         },
     )
 
@@ -170,16 +175,17 @@ def start_live(request, slot_id):
     )
     lc = existing
     if lc is None:
-        lc = LiveClass.objects.create(
-            batch=slot.batch,
-            title=f"{slot.batch.name} · {slot.get_weekday_display()} live class",
-            start_time=timezone.now(),
-            duration_minutes=slot.duration_minutes,
-            required_plan=slot.required_plan,
-            status=LiveClass.Status.LIVE,
-            meet_link=request.POST.get("meet_link", "").strip(),
-        )
-        lc.refresh_from_db()  # the post_save signal may have filled meet_link
+        with transaction.atomic():
+            lc = LiveClass.objects.create(
+                batch=slot.batch,
+                title=f"{slot.batch.name} · {slot.get_weekday_display()} live class",
+                start_time=timezone.now(),
+                duration_minutes=slot.duration_minutes,
+                status=LiveClass.Status.LIVE,
+                meet_link=request.POST.get("meet_link", "").strip(),
+            )
+            lc.allowed_plans.set(_selected_plans(request, slot))
+            ensure_meet_link(lc)  # synchronous; reads allowed_plans we just set
 
     if lc.meet_link:
         return redirect(lc.meet_link)
@@ -189,6 +195,14 @@ def start_live(request, slot_id):
         "Connect Google above (or add a link to this class) so students can join.",
     )
     return redirect("trainers:live")
+
+
+def _selected_plans(request, slot):
+    """Plans the trainer ticked for this link; default to the slot's plans."""
+    ids = request.POST.getlist("plans")
+    if ids:
+        return list(Plan.objects.filter(id__in=ids, is_active=True))
+    return list(slot.allowed_plans.all())
 
 
 def _next_occurrence(slot, now):
@@ -231,15 +245,16 @@ def schedule_live(request, slot_id):
         )
         return redirect("trainers:live")
 
-    lc = LiveClass.objects.create(
-        batch=slot.batch,
-        title=f"{slot.batch.name} · {slot.get_weekday_display()} live class",
-        start_time=start,
-        duration_minutes=slot.duration_minutes,
-        required_plan=slot.required_plan,
-        status=LiveClass.Status.SCHEDULED,
-    )
-    lc.refresh_from_db()  # post_save signal may have filled meet_link
+    with transaction.atomic():
+        lc = LiveClass.objects.create(
+            batch=slot.batch,
+            title=f"{slot.batch.name} · {slot.get_weekday_display()} live class",
+            start_time=start,
+            duration_minutes=slot.duration_minutes,
+            status=LiveClass.Status.SCHEDULED,
+        )
+        lc.allowed_plans.set(_selected_plans(request, slot))
+        ensure_meet_link(lc)  # synchronous; reads allowed_plans we just set
 
     when = start.strftime("%a %d %b, %I:%M %p")
     if lc.meet_link:

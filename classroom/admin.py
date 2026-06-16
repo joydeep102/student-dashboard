@@ -8,11 +8,12 @@ from .models import LiveClass
 @admin.register(LiveClass)
 class LiveClassAdmin(admin.ModelAdmin):
     list_display = (
-        "title", "batch", "start_time", "duration_minutes", "required_plan", "status", "meet_status",
+        "title", "batch", "start_time", "duration_minutes", "plan_labels", "status", "meet_status",
     )
-    list_filter = ("status", "batch", "required_plan", "start_time")
+    list_filter = ("status", "batch", "allowed_plans", "start_time")
     search_fields = ("title", "description", "batch__name")
-    autocomplete_fields = ["batch", "required_plan"]
+    autocomplete_fields = ["batch"]
+    filter_horizontal = ("allowed_plans",)
     date_hierarchy = "start_time"
     readonly_fields = ("google_event_id", "meet_link_preview")
     fieldsets = (
@@ -20,9 +21,9 @@ class LiveClassAdmin(admin.ModelAdmin):
         (
             "Access",
             {
-                "fields": ("required_plan",),
-                "description": "Minimum plan to join. Blank = everyone in the batch can join. "
-                "Set it to a higher plan so lower-plan students no longer get this class.",
+                "fields": ("allowed_plans",),
+                "description": "Tick the plans that can join this class. "
+                "Select none = everyone in the batch can join.",
             },
         ),
         ("Schedule", {"fields": ("start_time", "duration_minutes", "status")}),

@@ -31,8 +31,13 @@ class LiveClass(models.Model):
         null=True,
         blank=True,
         related_name="gated_classes",
-        help_text="Minimum plan to join this class. Leave blank so every "
-        "student in the batch can join.",
+        help_text="Deprecated — use 'Allowed plans' instead.",
+    )
+    allowed_plans = models.ManyToManyField(
+        Plan,
+        blank=True,
+        related_name="allowed_live_classes",
+        help_text="Which plans can join this class. Leave empty = everyone in the batch.",
     )
 
     # Google Meet / Calendar fields (populated automatically).
@@ -55,10 +60,22 @@ class LiveClass(models.Model):
     def required_level(self):
         return self.required_plan.level if self.required_plan_id else 0
 
+    def is_open_to(self, plan):
+        """True if a student on ``plan`` may join. Empty allowed_plans = everyone."""
+        if plan is None:
+            return False
+        ids = set(self.allowed_plans.values_list("id", flat=True))
+        return (not ids) or (plan.id in ids)
+
+    @property
+    def plan_labels(self):
+        names = list(self.allowed_plans.values_list("name", flat=True))
+        return ", ".join(names) if names else "Everyone in batch"
+
     def eligible_attendee_emails(self):
         """Emails of students who may join this class — used to invite them to
         the Google Calendar event. A student qualifies with an active enrollment
-        in the batch whose plan level is >= this class's required level.
+        in the batch and a plan in this class's allowed_plans (empty = everyone).
         """
         from courses.models import BatchEnrollment
 
@@ -66,10 +83,10 @@ class LiveClass(models.Model):
             BatchEnrollment.objects.filter(batch_id=self.batch_id, is_active=True)
             .select_related("student", "plan")
         )
-        required = self.required_level
+        allowed = set(self.allowed_plans.values_list("id", flat=True))
         emails = []
         for e in enrollments:
-            if e.plan.level >= required and e.student.is_active and e.student.email:
+            if (not allowed or e.plan_id in allowed) and e.student.is_active and e.student.email:
                 emails.append(e.student.email)
         return sorted(set(emails))
 

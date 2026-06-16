@@ -30,7 +30,8 @@ class BatchEnrollmentInline(admin.TabularInline):
 class ScheduleSlotInline(admin.TabularInline):
     model = BatchScheduleSlot
     extra = 1
-    autocomplete_fields = ["required_plan"]
+    fields = ("weekday", "start_time", "duration_minutes", "allowed_plans")
+    autocomplete_fields = ["allowed_plans"]
     verbose_name = "Weekly class day"
     verbose_name_plural = "Weekly class days (which day each week the batch runs live)"
 
@@ -45,8 +46,8 @@ class LessonInline(admin.StackedInline):
 class LiveClassInline(admin.TabularInline):
     model = LiveClass
     extra = 0
-    fields = ("title", "start_time", "duration_minutes", "required_plan", "status", "meet_link")
-    autocomplete_fields = ["required_plan"]
+    fields = ("title", "start_time", "duration_minutes", "allowed_plans", "status", "meet_link")
+    autocomplete_fields = ["allowed_plans"]
     show_change_link = True
 
 

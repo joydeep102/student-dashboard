@@ -13,7 +13,9 @@ def join_live(request, pk):
     Access requires an active enrollment in the class's batch AND a plan level
     that meets the class's required plan. Lower-plan students get a locked page.
     """
-    live_class = get_object_or_404(LiveClass.objects.select_related("batch", "required_plan"), pk=pk)
+    live_class = get_object_or_404(
+        LiveClass.objects.select_related("batch").prefetch_related("allowed_plans"), pk=pk
+    )
     enrollment = get_enrollment(request.user, live_class.batch)
 
     if enrollment is None:

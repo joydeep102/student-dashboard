@@ -183,7 +183,13 @@ class BatchScheduleSlot(models.Model):
         null=True,
         blank=True,
         related_name="+",
-        help_text="Minimum plan to join classes on this day. Blank = everyone in the batch.",
+        help_text="Deprecated — use 'Allowed plans' instead.",
+    )
+    allowed_plans = models.ManyToManyField(
+        Plan,
+        blank=True,
+        related_name="allowed_slots",
+        help_text="Default plans that can join classes on this day. Empty = everyone in the batch.",
     )
 
     class Meta:

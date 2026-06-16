@@ -21,8 +21,15 @@ def get_enrollment(user, batch):
 
 
 def can_access(enrollment, content):
-    """True if ``enrollment`` grants access to ``content`` (lesson/live class)."""
+    """True if ``enrollment`` grants access to ``content`` (lesson/live class).
+
+    Live classes gate on an explicit set of allowed plans (``is_open_to``);
+    lessons still gate on the minimum plan level.
+    """
     if enrollment is None:
         return False
+    checker = getattr(content, "is_open_to", None)
+    if checker is not None:
+        return checker(enrollment.plan)
     required = getattr(content, "required_level", 0)
     return enrollment.plan.level >= required

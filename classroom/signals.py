@@ -1,14 +1,10 @@
 import logging
 
+from django.db import transaction
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from .google_meet import (
-    GoogleMeetUnavailable,
-    can_create_meet,
-    create_meet_event,
-    delete_meet_event,
-)
+from .google_meet import can_create_meet, delete_meet_event, ensure_meet_link
 from .models import LiveClass
 
 log = logging.getLogger(__name__)
@@ -18,25 +14,24 @@ log = logging.getLogger(__name__)
 def auto_create_meet_link(sender, instance: LiveClass, created, **kwargs):
     """Generate a Meet link the first time a class is saved without one.
 
-    Silently no-ops (leaving the admin free to paste a link) when Google
-    credentials aren't configured, so the portal works out of the box.
+    Deferred to on_commit so the class's allowed_plans (saved after the row,
+    e.g. by the admin form or the trainer view) are present when we build the
+    Calendar invite list. No-ops when Google isn't connected.
     """
-    if instance.meet_link or not can_create_meet(instance):
+    if instance.meet_link:
         return
-    try:
-        meet_link, event_id = create_meet_event(instance)
-    except GoogleMeetUnavailable as exc:
-        log.warning("Meet link not created for LiveClass %s: %s", instance.pk, exc)
-        return
-    except Exception:  # network/API errors shouldn't crash the save
-        log.exception("Unexpected error creating Meet link for LiveClass %s", instance.pk)
-        return
+    pk = instance.pk
 
-    if meet_link:
-        # Update without re-triggering this signal.
-        LiveClass.objects.filter(pk=instance.pk).update(
-            meet_link=meet_link, google_event_id=event_id
+    def _run():
+        lc = (
+            LiveClass.objects.select_related("batch__course")
+            .filter(pk=pk)
+            .first()
         )
+        if lc:
+            ensure_meet_link(lc)
+
+    transaction.on_commit(_run)
 
 
 @receiver(post_delete, sender=LiveClass)
