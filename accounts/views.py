@@ -1,3 +1,4 @@
+import logging
 import secrets
 import string
 
@@ -10,6 +11,8 @@ from django.urls import reverse
 
 from . import google_config
 from .gmail_send import GmailUnavailable, send_email
+
+log = logging.getLogger(__name__)
 
 
 @login_required
@@ -42,8 +45,10 @@ def forgot_password(request):
             try:
                 send_email(user.email, "Your new Fighter Bull's password", body)
             except GmailUnavailable:
+                log.warning("Forgot-password: Gmail not connected")
                 error = "Password email isn't available right now. Please contact your admin."
             except Exception:
+                log.exception("Forgot-password: Gmail send failed")
                 error = "Couldn't send the email right now. Please try again or contact your admin."
             else:
                 # Only change the password once the email actually went out.
