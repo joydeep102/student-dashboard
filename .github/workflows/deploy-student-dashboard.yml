@@ -5,8 +5,15 @@ on:
     branches:
       - main
 
+  workflow_dispatch:
+
+concurrency:
+  group: student-dashboard-deploy
+  cancel-in-progress: true
+
 jobs:
   deploy:
+    name: Auto Pull and Build
     runs-on: ubuntu-latest
 
     steps:
@@ -19,23 +26,69 @@ jobs:
         run: |
           set -e
 
+          echo "=============================="
+          echo "Checking GitHub secrets"
+          echo "=============================="
+
+          if [ -z "$SSH_HOST" ]; then
+            echo "SSH_HOST secret missing"
+            exit 1
+          fi
+
+          if [ -z "$SSH_USER" ]; then
+            echo "SSH_USER secret missing"
+            exit 1
+          fi
+
+          if [ -z "$SSH_PRIVATE_KEY" ]; then
+            echo "SSH_PRIVATE_KEY secret missing"
+            exit 1
+          fi
+
+          SSH_PORT="${SSH_PORT:-22}"
+
+          echo "=============================="
+          echo "Setting up SSH"
+          echo "=============================="
+
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
           ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts
 
-          ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" << 'EOF'
+          echo "=============================="
+          echo "Connecting to server"
+          echo "=============================="
+
+          ssh -i ~/.ssh/id_rsa -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" << 'EOF'
             set -e
 
-            cd /home/joydeep/student-dashboard
+            PROJECT_DIR="/home/joydeep/student-dashboard"
 
-            echo "Pulling latest code..."
+            echo "=============================="
+            echo "STEP 1: Go to project folder"
+            echo "=============================="
+
+            cd "$PROJECT_DIR"
+
+            echo "Current folder:"
+            pwd
+
+            echo "=============================="
+            echo "STEP 2: Check git status"
+            echo "=============================="
+
+            git status
+
+            echo "=============================="
+            echo "STEP 3: Pull latest code"
+            echo "=============================="
 
             if git pull; then
               echo "Git pull successful"
             else
-              echo "Git pull failed because of local conflict. Cleaning local files..."
+              echo "Git pull failed. Cleaning local conflict files and retrying..."
 
               git merge --abort || true
               git rebase --abort || true
@@ -47,8 +100,19 @@ jobs:
               git pull
             fi
 
-            echo "Building Docker web service..."
+            echo "=============================="
+            echo "STEP 4: Docker build and restart web"
+            echo "=============================="
+
             docker compose up -d --build web
 
-            echo "Deployment completed successfully"
+            echo "=============================="
+            echo "STEP 5: Check running containers"
+            echo "=============================="
+
+            docker compose ps
+
+            echo "=============================="
+            echo "DEPLOYMENT SUCCESSFUL"
+            echo "=============================="
           EOF
