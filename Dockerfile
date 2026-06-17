@@ -30,5 +30,7 @@ USER appuser
 EXPOSE 8000
 
 ENTRYPOINT ["/app/entrypoint.sh"]
+# --timeout 3600: allow long large-file (multi-GB) uploads without the worker
+# being killed mid-transfer.
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", \
-     "--workers", "3", "--timeout", "600"]
+     "--workers", "3", "--timeout", "3600"]

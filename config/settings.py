@@ -147,6 +147,13 @@ STORAGES = {
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Large uploads (trainer class recordings can be multiple GB). Don't cap the
+# request body, and stream files larger than 10 MB straight to a temp file on
+# disk instead of holding them in memory. The real upload-size limit is set in
+# nginx (client_max_body_size).
+DATA_UPLOAD_MAX_MEMORY_SIZE = None
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ---------------------------------------------------------------------------
