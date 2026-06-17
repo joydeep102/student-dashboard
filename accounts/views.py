@@ -1,10 +1,14 @@
 import secrets
 import string
 
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 
+from . import google_config
 from .gmail_send import GmailUnavailable, send_email
 
 
@@ -47,3 +51,36 @@ def forgot_password(request):
                 user.save(update_fields=["password"])
                 sent = True
     return render(request, "accounts/forgot_password.html", {"sent": sent, "error": error})
+
+
+@staff_member_required
+def google_settings(request):
+    """Admin page to enter the Google OAuth Client ID/Secret and see the
+    redirect URI to register in the Google Cloud Console."""
+    cfg = google_config.load()
+    redirect_uri = cfg["redirect_uri"] or request.build_absolute_uri(
+        reverse("accounts:google_callback")
+    )
+
+    if request.method == "POST" and not cfg["from_env"]:
+        client_id = request.POST.get("client_id", "").strip()
+        # Keep the saved secret if the field is left blank (so it isn't wiped).
+        client_secret = request.POST.get("client_secret", "").strip() or cfg["client_secret"]
+        ruri = request.POST.get("redirect_uri", "").strip() or redirect_uri
+        google_config.save(client_id, client_secret, ruri)
+        messages.success(request, "Google API credentials saved.")
+        return redirect("accounts:google_settings")
+
+    from classroom.google_meet import is_configured as calendar_ok
+    from trainers.youtube import is_configured as youtube_ok
+    from .gmail_send import is_configured as gmail_ok
+
+    return render(
+        request,
+        "accounts/google_settings.html",
+        {
+            "cfg": cfg,
+            "redirect_uri": redirect_uri,
+            "status": {"calendar": calendar_ok(), "youtube": youtube_ok(), "gmail": gmail_ok()},
+        },
+    )

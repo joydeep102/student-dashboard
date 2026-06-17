@@ -30,9 +30,9 @@ class YouTubeUnavailable(RuntimeError):
 def _client_configured() -> bool:
     """OAuth client via a Desktop client_secret.json OR the reused
     Sign-in-with-Google web client (admin connect flow)."""
-    return os.path.exists(settings.GOOGLE_OAUTH_CLIENT_SECRET_FILE) or bool(
-        getattr(settings, "GOOGLE_LOGIN_CLIENT_ID", "")
-    )
+    from accounts.google_config import load
+
+    return os.path.exists(settings.GOOGLE_OAUTH_CLIENT_SECRET_FILE) or bool(load()["client_id"])
 
 
 def is_configured() -> bool:

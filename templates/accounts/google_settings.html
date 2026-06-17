@@ -1,0 +1,68 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% block title %}Google API settings | Fighter Bull's Admin{% endblock %}
+
+{% block content %}
+<h1>Google API settings</h1>
+<p style="color:#555;max-width:760px;">
+    Enter the OAuth <strong>Web application</strong> Client ID &amp; Secret from the
+    Google Cloud Console, and copy the redirect URI below into that client's
+    <em>Authorized redirect URIs</em>. These credentials are shared by Sign-in-with-Google,
+    Calendar/Meet, YouTube upload and Gmail.
+</p>
+
+{% if cfg.from_env %}
+<p style="background:#fff8ec;border:1px solid #f6c768;padding:12px 14px;border-radius:10px;max-width:760px;">
+    Credentials are currently provided by <strong>environment variables</strong>
+    (<code>GOOGLE_CLIENT_ID</code> / <code>GOOGLE_CLIENT_SECRET</code>), so this form is read-only.
+</p>
+{% endif %}
+
+<form method="post" style="max-width:760px;margin-top:16px;">
+    {% csrf_token %}
+    <table style="width:100%;border-collapse:separate;border-spacing:0 12px;">
+        <tr>
+            <th style="text-align:left;width:170px;vertical-align:middle;">Client ID</th>
+            <td><input type="text" name="client_id" value="{{ cfg.client_id }}"
+                       {% if cfg.from_env %}disabled{% endif %}
+                       style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;"></td>
+        </tr>
+        <tr>
+            <th style="text-align:left;vertical-align:middle;">Client Secret</th>
+            <td><input type="password" name="client_secret"
+                       placeholder="{% if cfg.client_secret %}•••••••• (leave blank to keep current){% else %}Enter client secret{% endif %}"
+                       {% if cfg.from_env %}disabled{% endif %}
+                       style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;"></td>
+        </tr>
+        <tr>
+            <th style="text-align:left;vertical-align:top;padding-top:8px;">Authorized redirect URI</th>
+            <td>
+                <div style="display:flex;gap:8px;">
+                    <input type="text" id="rediruri" value="{{ redirect_uri }}" readonly
+                           style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;background:#f6f6f6;">
+                    <button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('rediruri').value); this.textContent='Copied';">Copy</button>
+                </div>
+                <small style="color:#777;">Add this exact URL to your Google web client's
+                    <em>Authorized redirect URIs</em>.</small>
+            </td>
+        </tr>
+    </table>
+    {% if not cfg.from_env %}
+    <button type="submit" class="button" style="background:#19b036;color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;">Save credentials</button>
+    {% endif %}
+</form>
+
+<h2 style="margin-top:34px;">Connections &amp; APIs</h2>
+<p style="color:#555;max-width:760px;">After saving credentials, authorize each integration, and make sure its API is
+    <strong>enabled</strong> in the Google Cloud Console (Calendar API, YouTube Data API v3, Gmail API).</p>
+<ul style="line-height:2;max-width:760px;">
+    <li><strong>Sign-in with Google:</strong> {% if cfg.enabled %}✅ credentials set{% else %}❌ enter credentials above{% endif %}</li>
+    <li><strong>Calendar / Meet:</strong>
+        {% if status.calendar %}✅ connected{% else %}<a href="{% url 'accounts:google_connect' %}?kind=calendar">Connect</a>{% endif %}</li>
+    <li><strong>YouTube upload:</strong>
+        {% if status.youtube %}✅ connected{% else %}<a href="{% url 'accounts:google_connect' %}?kind=youtube">Connect</a>{% endif %}</li>
+    <li><strong>Gmail (send mail):</strong>
+        {% if status.gmail %}✅ connected{% else %}<a href="{% url 'accounts:google_connect' %}?kind=gmail">Connect</a>{% endif %}</li>
+</ul>
+<p><a href="{% url 'admin:index' %}">← Back to dashboard</a></p>
+{% endblock %}

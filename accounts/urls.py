@@ -34,4 +34,6 @@ urlpatterns = [
     path("google/callback/", google_login.google_callback, name="google_callback"),
     # Admin-only: connect server-side Calendar/YouTube (?kind=calendar|youtube)
     path("google/connect/", google_login.google_connect, name="google_connect"),
+    # Admin-only: enter Client ID/Secret + see the redirect URI
+    path("google/settings/", views.google_settings, name="google_settings"),
 ]

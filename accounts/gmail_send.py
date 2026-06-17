@@ -19,9 +19,9 @@ class GmailUnavailable(RuntimeError):
 
 
 def is_configured() -> bool:
-    return bool(getattr(settings, "GOOGLE_LOGIN_CLIENT_ID", "")) and os.path.exists(
-        settings.GOOGLE_GMAIL_TOKEN_FILE
-    )
+    from accounts.google_config import load
+
+    return bool(load()["client_id"]) and os.path.exists(settings.GOOGLE_GMAIL_TOKEN_FILE)
 
 
 def _credentials():

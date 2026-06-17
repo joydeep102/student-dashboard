@@ -15,6 +15,8 @@ from django.contrib.auth import get_user_model, login
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
 
+from . import google_config
+
 User = get_user_model()
 log = logging.getLogger(__name__)
 
@@ -75,23 +77,24 @@ def _login_error(msg):
 
 def _allow_insecure_transport():
     # oauthlib refuses plain http; permit it for local DEBUG over http only.
-    if settings.DEBUG and settings.GOOGLE_LOGIN_REDIRECT_URI.startswith("http://"):
+    if settings.DEBUG and google_config.load()["redirect_uri"].startswith("http://"):
         os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 
 def _flow(scopes=None, state=None):
     from google_auth_oauthlib.flow import Flow
 
+    cfg = google_config.load()
     client_config = {
         "web": {
-            "client_id": settings.GOOGLE_LOGIN_CLIENT_ID,
-            "client_secret": settings.GOOGLE_LOGIN_CLIENT_SECRET,
+            "client_id": cfg["client_id"],
+            "client_secret": cfg["client_secret"],
             "auth_uri": AUTH_URI,
             "token_uri": TOKEN_URI,
-            "redirect_uris": [settings.GOOGLE_LOGIN_REDIRECT_URI],
+            "redirect_uris": [cfg["redirect_uri"]],
         }
     }
-    kwargs = {"scopes": scopes or SCOPES, "redirect_uri": settings.GOOGLE_LOGIN_REDIRECT_URI}
+    kwargs = {"scopes": scopes or SCOPES, "redirect_uri": cfg["redirect_uri"]}
     if state:
         kwargs["state"] = state
     return Flow.from_client_config(client_config, **kwargs)
@@ -99,7 +102,7 @@ def _flow(scopes=None, state=None):
 
 def google_login(request):
     """Kick off the Google OAuth flow."""
-    if not settings.GOOGLE_LOGIN_ENABLED:
+    if not google_config.load()["enabled"]:
         return _login_error("Google login isn't configured.")
     _allow_insecure_transport()
     request.session.pop("g_connect_kind", None)  # this is a login, not a connect
@@ -132,8 +135,8 @@ def google_connect(request):
             raise PermissionDenied("Trainer access only.")
     elif not request.user.is_staff:
         raise PermissionDenied("Admin access only.")
-    if not settings.GOOGLE_LOGIN_ENABLED:
-        return _login_error("Google client isn't configured.")
+    if not google_config.load()["enabled"]:
+        return _login_error("Google client isn't configured. Set it in Admin → Google API settings.")
 
     _allow_insecure_transport()
     scopes = CONNECT[kind][0]
@@ -189,7 +192,8 @@ def _finish_connect(request, kind, state, code_verifier, auth_response):
 
 def google_callback(request):
     """Handle Google's redirect: log a user in, or finish an admin connect."""
-    if not settings.GOOGLE_LOGIN_ENABLED:
+    cfg = google_config.load()
+    if not cfg["enabled"]:
         return _login_error("Google login isn't configured.")
     connect_kind = request.session.pop("g_connect_kind", None)
     if request.GET.get("error"):
@@ -206,7 +210,7 @@ def google_callback(request):
     # rather than request.build_absolute_uri(), so it works correctly behind an
     # HTTPS reverse proxy that forwards plain http to the app.
     query = request.META.get("QUERY_STRING", "")
-    auth_response = settings.GOOGLE_LOGIN_REDIRECT_URI
+    auth_response = cfg["redirect_uri"]
     if query:
         auth_response = f"{auth_response}?{query}"
 
@@ -228,7 +232,7 @@ def google_callback(request):
 
         info = id_token.verify_oauth2_token(
             flow.credentials.id_token, g_requests.Request(),
-            settings.GOOGLE_LOGIN_CLIENT_ID, clock_skew_in_seconds=10,
+            cfg["client_id"], clock_skew_in_seconds=10,
         )
     except Exception:
         log.exception("Google ID token verification failed")

@@ -87,6 +87,10 @@
     <!-- Google connections -->
     <h2 class="fb-section">Google connections</h2>
     <div class="fb-actions">
+        <a href="{% url 'accounts:google_settings' %}" class="fb-action">
+            <span class="fb-action-ic">⚙</span>
+            <span><strong>Google API settings</strong><small>Client ID / Secret &amp; redirect URI</small></span>
+        </a>
         <a href="{% url 'accounts:google_connect' %}?kind=calendar" class="fb-action">
             <span class="fb-action-ic">📅</span>
             <span><strong>Calendar / Meet
