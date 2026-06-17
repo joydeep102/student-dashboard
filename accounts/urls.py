@@ -21,14 +21,7 @@ urlpatterns = [
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("password/forgot/", views.forgot_password, name="forgot_password"),
     path("profile/", views.profile, name="profile"),
-    path(
-        "password/change/",
-        auth_views.PasswordChangeView.as_view(
-            template_name="accounts/password_change.html",
-            success_url="/accounts/profile/",
-        ),
-        name="password_change",
-    ),
+    path("password/change/", views.PasswordChangeView.as_view(), name="password_change"),
     # Sign in with Google
     path("google/login/", google_login.google_login, name="google_login"),
     path("google/callback/", google_login.google_callback, name="google_callback"),

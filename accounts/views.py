@@ -5,9 +5,11 @@ import string
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import get_user_model
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.decorators import login_required
+from django.contrib.messages.views import SuccessMessageMixin
 from django.shortcuts import redirect, render
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 
 from . import google_config
 from .gmail_send import GmailUnavailable, send_email
@@ -59,6 +61,12 @@ def forgot_password(request):
 
 
 MAX_GOOGLE_CLIENTS = 5
+
+
+class PasswordChangeView(SuccessMessageMixin, auth_views.PasswordChangeView):
+    template_name = "accounts/password_change.html"
+    success_url = reverse_lazy("accounts:profile")
+    success_message = "Your password was changed successfully."
 
 
 @staff_member_required
