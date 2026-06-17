@@ -4,59 +4,68 @@
 
 {% block content %}
 <h1>Google API settings</h1>
-<p style="color:#555;max-width:760px;">
-    Enter the OAuth <strong>Web application</strong> Client ID &amp; Secret from the
-    Google Cloud Console, and copy the redirect URI below into that client's
-    <em>Authorized redirect URIs</em>. These credentials are shared by Sign-in-with-Google,
-    Calendar/Meet, YouTube upload and Gmail.
+<p style="color:#555;max-width:820px;">
+    Add one or more Google OAuth <strong>Web application</strong> clients and tick which
+    services each one serves. Use one client for everything, or split them — e.g. one
+    client for Gmail + Calendar/Meet and a separate client for YouTube.
 </p>
 
-{% if cfg.from_env %}
-<p style="background:#fff8ec;border:1px solid #f6c768;padding:12px 14px;border-radius:10px;max-width:760px;">
-    Credentials are currently provided by <strong>environment variables</strong>
-    (<code>GOOGLE_CLIENT_ID</code> / <code>GOOGLE_CLIENT_SECRET</code>), so this form is read-only.
+<div style="max-width:820px;background:#f6f8fb;border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin:14px 0;">
+    <strong>Authorized redirect URI</strong> — add this to <em>every</em> client's
+    "Authorized redirect URIs" in the Google Cloud Console:
+    <div style="display:flex;gap:8px;margin-top:8px;">
+        <input type="text" id="rediruri" value="{{ redirect_uri }}" readonly
+               style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;">
+        <button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('rediruri').value); this.textContent='Copied';">Copy</button>
+    </div>
+</div>
+
+{% if from_env %}
+<p style="background:#fff8ec;border:1px solid #f6c768;padding:12px 14px;border-radius:10px;max-width:820px;">
+    Credentials come from <strong>environment variables</strong> (single client for all
+    services), so this form is read-only.
 </p>
 {% endif %}
 
-<form method="post" style="max-width:760px;margin-top:16px;">
+<form method="post" style="max-width:820px;">
     {% csrf_token %}
-    <table style="width:100%;border-collapse:separate;border-spacing:0 12px;">
-        <tr>
-            <th style="text-align:left;width:170px;vertical-align:middle;">Client ID</th>
-            <td><input type="text" name="client_id" value="{{ cfg.client_id }}"
-                       {% if cfg.from_env %}disabled{% endif %}
-                       style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;"></td>
-        </tr>
-        <tr>
-            <th style="text-align:left;vertical-align:middle;">Client Secret</th>
-            <td><input type="password" name="client_secret"
-                       placeholder="{% if cfg.client_secret %}•••••••• (leave blank to keep current){% else %}Enter client secret{% endif %}"
-                       {% if cfg.from_env %}disabled{% endif %}
-                       style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;"></td>
-        </tr>
-        <tr>
-            <th style="text-align:left;vertical-align:top;padding-top:8px;">Authorized redirect URI</th>
-            <td>
-                <div style="display:flex;gap:8px;">
-                    <input type="text" id="rediruri" value="{{ redirect_uri }}" readonly
-                           style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;background:#f6f6f6;">
-                    <button type="button" class="button" onclick="navigator.clipboard.writeText(document.getElementById('rediruri').value); this.textContent='Copied';">Copy</button>
-                </div>
-                <small style="color:#777;">Add this exact URL to your Google web client's
-                    <em>Authorized redirect URIs</em>.</small>
-            </td>
-        </tr>
-    </table>
-    {% if not cfg.from_env %}
+    {% for row in rows %}
+    <fieldset style="border:1px solid #ddd;border-radius:12px;padding:14px 16px;margin:0 0 16px;">
+        <legend style="font-weight:700;padding:0 6px;">Client {{ row.i|add:1 }}</legend>
+        <p style="margin:6px 0;">
+            <label style="display:block;font-weight:600;">Client ID</label>
+            <input type="text" name="cid_{{ row.i }}" value="{{ row.client_id }}" {% if from_env %}disabled{% endif %}
+                   style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;">
+        </p>
+        <p style="margin:6px 0;">
+            <label style="display:block;font-weight:600;">Client Secret</label>
+            <input type="password" name="csec_{{ row.i }}" {% if from_env %}disabled{% endif %}
+                   placeholder="{% if row.has_secret %}•••••••• (leave blank to keep){% else %}Enter client secret{% endif %}"
+                   style="width:100%;padding:9px 12px;border:1px solid #ccc;border-radius:8px;">
+        </p>
+        <p style="margin:10px 0 2px;font-weight:600;">Use this client for:</p>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;">
+            {% for key, label in services %}
+            <label style="display:inline-flex;align-items:center;gap:6px;background:#f4f6fb;padding:6px 12px;border-radius:999px;">
+                <input type="checkbox" name="svc_{{ row.i }}" value="{{ key }}"
+                       {% if key in row.services %}checked{% endif %} {% if from_env %}disabled{% endif %}>
+                {{ label }}
+            </label>
+            {% endfor %}
+        </div>
+        <input type="hidden" name="ruri_{{ row.i }}" value="{{ redirect_uri }}">
+    </fieldset>
+    {% endfor %}
+    {% if not from_env %}
     <button type="submit" class="button" style="background:#19b036;color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;">Save credentials</button>
     {% endif %}
 </form>
 
 <h2 style="margin-top:34px;">Connections &amp; APIs</h2>
-<p style="color:#555;max-width:760px;">After saving credentials, authorize each integration, and make sure its API is
+<p style="color:#555;max-width:820px;">After saving, authorize each integration and make sure its API is
     <strong>enabled</strong> in the Google Cloud Console (Calendar API, YouTube Data API v3, Gmail API).</p>
-<ul style="line-height:2;max-width:760px;">
-    <li><strong>Sign-in with Google:</strong> {% if cfg.enabled %}✅ credentials set{% else %}❌ enter credentials above{% endif %}</li>
+<ul style="line-height:2;max-width:820px;">
+    <li><strong>Sign-in with Google:</strong> {% if status.login %}✅ client assigned{% else %}❌ assign a client above{% endif %}</li>
     <li><strong>Calendar / Meet:</strong>
         {% if status.calendar %}✅ connected{% else %}<a href="{% url 'accounts:google_connect' %}?kind=calendar">Connect</a>{% endif %}</li>
     <li><strong>YouTube upload:</strong>

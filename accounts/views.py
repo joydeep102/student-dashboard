@@ -53,23 +53,44 @@ def forgot_password(request):
     return render(request, "accounts/forgot_password.html", {"sent": sent, "error": error})
 
 
+MAX_GOOGLE_CLIENTS = 5
+
+
 @staff_member_required
 def google_settings(request):
-    """Admin page to enter the Google OAuth Client ID/Secret and see the
-    redirect URI to register in the Google Cloud Console."""
-    cfg = google_config.load()
-    redirect_uri = cfg["redirect_uri"] or request.build_absolute_uri(
-        reverse("accounts:google_callback")
-    )
+    """Admin page to manage one or more Google OAuth clients and assign which
+    services (login, calendar/meet, youtube, gmail) each one serves."""
+    clients, from_env = google_config.load_clients()
+    redirect_uri = request.build_absolute_uri(reverse("accounts:google_callback"))
 
-    if request.method == "POST" and not cfg["from_env"]:
-        client_id = request.POST.get("client_id", "").strip()
-        # Keep the saved secret if the field is left blank (so it isn't wiped).
-        client_secret = request.POST.get("client_secret", "").strip() or cfg["client_secret"]
-        ruri = request.POST.get("redirect_uri", "").strip() or redirect_uri
-        google_config.save(client_id, client_secret, ruri)
+    if request.method == "POST" and not from_env:
+        new = []
+        for i in range(MAX_GOOGLE_CLIENTS):
+            cid = request.POST.get(f"cid_{i}", "").strip()
+            if not cid:
+                continue
+            csec = request.POST.get(f"csec_{i}", "").strip()
+            if not csec and i < len(clients):
+                csec = clients[i].get("client_secret", "")  # keep existing secret
+            new.append({
+                "client_id": cid,
+                "client_secret": csec,
+                "redirect_uri": (request.POST.get(f"ruri_{i}", "").strip() or redirect_uri),
+                "services": request.POST.getlist(f"svc_{i}"),
+            })
+        google_config.save_clients(new)
         messages.success(request, "Google API credentials saved.")
         return redirect("accounts:google_settings")
+
+    rows = []
+    for i in range(MAX_GOOGLE_CLIENTS):
+        c = clients[i] if i < len(clients) else {}
+        rows.append({
+            "i": i,
+            "client_id": c.get("client_id", ""),
+            "has_secret": bool(c.get("client_secret")),
+            "services": c.get("services", []),
+        })
 
     from classroom.google_meet import is_configured as calendar_ok
     from trainers.youtube import is_configured as youtube_ok
@@ -79,8 +100,15 @@ def google_settings(request):
         request,
         "accounts/google_settings.html",
         {
-            "cfg": cfg,
+            "rows": rows,
+            "services": google_config.SERVICES,
             "redirect_uri": redirect_uri,
-            "status": {"calendar": calendar_ok(), "youtube": youtube_ok(), "gmail": gmail_ok()},
+            "from_env": from_env,
+            "status": {
+                "login": google_config.is_service_enabled("login"),
+                "calendar": calendar_ok(),
+                "youtube": youtube_ok(),
+                "gmail": gmail_ok(),
+            },
         },
     )

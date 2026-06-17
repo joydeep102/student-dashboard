@@ -35,9 +35,11 @@ class GoogleMeetUnavailable(RuntimeError):
 def _client_configured() -> bool:
     """An OAuth client is available via a Desktop client_secret.json OR the
     Sign-in-with-Google web client settings (reused by the admin connect flow)."""
-    from accounts.google_config import load
+    from accounts.google_config import credentials_for
 
-    return os.path.exists(settings.GOOGLE_OAUTH_CLIENT_SECRET_FILE) or bool(load()["client_id"])
+    return os.path.exists(settings.GOOGLE_OAUTH_CLIENT_SECRET_FILE) or bool(
+        credentials_for("calendar")
+    )
 
 
 def is_configured() -> bool:
