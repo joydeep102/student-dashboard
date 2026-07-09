@@ -15,10 +15,36 @@ from .models import (
     Lesson,
     LessonProgress,
     Payment,
+    PaymentSettings,
     Plan,
     RecordedCourse,
     Section,
 )
+
+
+@admin.register(PaymentSettings)
+class PaymentSettingsAdmin(admin.ModelAdmin):
+    """Singleton: enter a UPI ID (and/or Razorpay keys) to turn on payments."""
+
+    fieldsets = (
+        ("UPI (manual)", {
+            "fields": ("upi_vpa", "upi_payee_name"),
+            "description": "Enter your UPI ID to switch on the UPI payment option "
+            "immediately — no redeploy needed.",
+        }),
+        ("Razorpay (online)", {
+            "fields": ("razorpay_key_id", "razorpay_key_secret", "razorpay_webhook_secret"),
+            "description": "Fill both key id + secret to enable online checkout.",
+        }),
+        ("Preview", {"fields": ("preview_lessons",)}),
+    )
+
+    def has_add_permission(self, request):
+        # Singleton — only one row.
+        return not PaymentSettings.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Plan)

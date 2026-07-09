@@ -15,13 +15,14 @@ import hmac
 import json
 import urllib.request
 
-from django.conf import settings
+from .payment_config import payment_config
 
 API_BASE = "https://api.razorpay.com/v1"
 
 
 def _auth_header():
-    raw = f"{settings.RAZORPAY_KEY_ID}:{settings.RAZORPAY_KEY_SECRET}".encode()
+    cfg = payment_config()
+    raw = f"{cfg.razorpay_key_id}:{cfg.razorpay_key_secret}".encode()
     return "Basic " + base64.b64encode(raw).decode()
 
 
@@ -56,14 +57,14 @@ def verify_checkout_signature(order_id, payment_id, signature):
         return False
     msg = f"{order_id}|{payment_id}".encode()
     expected = hmac.new(
-        settings.RAZORPAY_KEY_SECRET.encode(), msg, hashlib.sha256
+        payment_config().razorpay_key_secret.encode(), msg, hashlib.sha256
     ).hexdigest()
     return hmac.compare_digest(expected, signature)
 
 
 def verify_webhook_signature(raw_body, signature):
     """Verify the ``X-Razorpay-Signature`` header on a webhook POST."""
-    secret = settings.RAZORPAY_WEBHOOK_SECRET
+    secret = payment_config().razorpay_webhook_secret
     if not (secret and signature):
         return False
     expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()

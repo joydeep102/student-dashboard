@@ -5,6 +5,39 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 
+class PaymentSettings(models.Model):
+    """Site-wide payment configuration, editable from the admin.
+
+    Values entered here override the corresponding environment variables, so an
+    admin can turn on UPI (or Razorpay) without touching env / redeploying. Leave
+    a field blank to fall back to its environment value.
+    """
+
+    upi_vpa = models.CharField(
+        "UPI ID (VPA)", max_length=100, blank=True,
+        help_text="e.g. yourname@okhdfcbank. Setting this turns on the UPI option.",
+    )
+    upi_payee_name = models.CharField(max_length=100, blank=True, help_text="Name shown in the UPI app.")
+    razorpay_key_id = models.CharField(max_length=60, blank=True)
+    razorpay_key_secret = models.CharField(max_length=120, blank=True)
+    razorpay_webhook_secret = models.CharField(max_length=120, blank=True)
+    preview_lessons = models.PositiveSmallIntegerField(
+        default=2,
+        help_text="Lectures a manual-UPI buyer can preview before admin verification.",
+    )
+
+    class Meta:
+        verbose_name = "Payment settings"
+        verbose_name_plural = "Payment settings"
+
+    def __str__(self):
+        return "Payment settings"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  # singleton
+        super().save(*args, **kwargs)
+
+
 class Plan(models.Model):
     """A pricing tier.
 

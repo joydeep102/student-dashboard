@@ -5,7 +5,6 @@ learn (branded player, curriculum sidebar, progress/resume). Payment mirrors the
 batch flow: manual UPI (with provisional preview) and Razorpay online.
 """
 
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponseBadRequest, JsonResponse
@@ -24,6 +23,7 @@ from .access import (
     unlocked_lecture_ids,
 )
 from .models import CourseEnrollment, CoursePayment, Lecture, LectureProgress, RecordedCourse
+from .payment_config import payment_config
 from .views import _qr_data_uri, _register_student, _upi_links
 
 
@@ -214,10 +214,11 @@ def checkout(request, slug):
             },
         )
 
+    cfg = payment_config()
     upi = None
-    if settings.UPI_VPA and amount > 0:
+    if cfg.upi_vpa and amount > 0:
         links = _upi_links(amount, f"course {course.slug}")
-        upi = {"vpa": settings.UPI_VPA, "payee": settings.UPI_PAYEE_NAME,
+        upi = {"vpa": cfg.upi_vpa, "payee": cfg.upi_payee_name,
                "links": links, "qr": _qr_data_uri(links["generic"])}
 
     return render(
@@ -228,8 +229,8 @@ def checkout(request, slug):
             "amount": amount,
             "upi": upi,
             "preview_count": preview_count(),
-            "razorpay_enabled": settings.RAZORPAY_ENABLED,
-            "razorpay_key_id": settings.RAZORPAY_KEY_ID,
+            "razorpay_enabled": cfg.razorpay_enabled,
+            "razorpay_key_id": cfg.razorpay_key_id,
         },
     )
 
@@ -305,7 +306,8 @@ def upi_submit(request, slug):
 @require_POST
 def razorpay_order(request, slug):
     """Create a Razorpay order (+ pending CoursePayment) for online checkout."""
-    if not settings.RAZORPAY_ENABLED:
+    cfg = payment_config()
+    if not cfg.razorpay_enabled:
         return JsonResponse({"error": "Online payment is not available."}, status=400)
     course = _published_course(slug)
     if _already_full(request.user, course):
@@ -334,8 +336,8 @@ def razorpay_order(request, slug):
             "order_id": order["id"],
             "amount": order["amount"],
             "currency": "INR",
-            "key_id": settings.RAZORPAY_KEY_ID,
-            "name": settings.UPI_PAYEE_NAME,
+            "key_id": cfg.razorpay_key_id,
+            "name": cfg.upi_payee_name,
             "description": course.title,
             "prefill": {
                 "name": request.user.display_name,

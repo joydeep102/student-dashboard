@@ -516,10 +516,13 @@ def _upi_links(amount, note):
     """
     from urllib.parse import urlencode
 
+    from .payment_config import payment_config
+
+    cfg = payment_config()
     query = urlencode(
         {
-            "pa": settings.UPI_VPA,
-            "pn": settings.UPI_PAYEE_NAME,
+            "pa": cfg.upi_vpa,
+            "pn": cfg.upi_payee_name,
             "am": f"{amount}",
             "cu": "INR",
             "tn": note[:50],
@@ -661,12 +664,15 @@ def checkout(request, code):
             },
         )
 
+    from .payment_config import payment_config
+
+    cfg = payment_config()
     upi = None
-    if settings.UPI_VPA and amount > 0:
+    if cfg.upi_vpa and amount > 0:
         links = _upi_links(amount, f"{batch.code} {plan.slug}")
         upi = {
-            "vpa": settings.UPI_VPA,
-            "payee": settings.UPI_PAYEE_NAME,
+            "vpa": cfg.upi_vpa,
+            "payee": cfg.upi_payee_name,
             "links": links,
             "qr": _qr_data_uri(links["generic"]),
         }
@@ -681,8 +687,8 @@ def checkout(request, code):
             "enrollment": enrollment,
             "upi": upi,
             "preview_count": preview_count(),
-            "razorpay_enabled": settings.RAZORPAY_ENABLED,
-            "razorpay_key_id": settings.RAZORPAY_KEY_ID,
+            "razorpay_enabled": cfg.razorpay_enabled,
+            "razorpay_key_id": cfg.razorpay_key_id,
         },
     )
 
@@ -745,7 +751,10 @@ def upi_submit(request, code):
 @require_POST
 def razorpay_order(request, code):
     """Create a Razorpay order (+ a pending Payment) for the online checkout."""
-    if not settings.RAZORPAY_ENABLED:
+    from .payment_config import payment_config
+
+    cfg = payment_config()
+    if not cfg.razorpay_enabled:
         return JsonResponse({"error": "Online payment is not available."}, status=400)
 
     batch, plan, enrollment, amount = _resolve_purchase(request, code)
@@ -778,8 +787,8 @@ def razorpay_order(request, code):
             "order_id": order["id"],
             "amount": order["amount"],
             "currency": "INR",
-            "key_id": settings.RAZORPAY_KEY_ID,
-            "name": settings.UPI_PAYEE_NAME,
+            "key_id": cfg.razorpay_key_id,
+            "name": cfg.upi_payee_name,
             "description": f"{batch.name} · {plan.name}",
             "prefill": {
                 "name": request.user.display_name,

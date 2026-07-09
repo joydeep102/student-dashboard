@@ -11,13 +11,13 @@ payment still awaiting admin verification) can preview only the first
 the payment the enrollment becomes full and the whole plan unlocks.
 """
 
-from django.conf import settings
-
 from .models import BatchEnrollment, CourseEnrollment, Lesson
 
 
 def preview_count():
-    return getattr(settings, "PROVISIONAL_PREVIEW_LESSONS", 2)
+    from .payment_config import payment_config
+
+    return payment_config().preview_lessons
 
 
 def get_enrollment(user, batch):
