@@ -2,73 +2,153 @@
 {% load static %}
 {% block title %}{{ course.title }}{% endblock %}
 
+{% block head_extra %}
+<style>
+.clp-hero {
+    background:linear-gradient(135deg,#0b1220 0%,#0f3d2e 100%);
+    color:#fff; padding:34px 20px 96px; margin:-20px -20px 0;
+}
+.clp-hero-in { max-width:1080px; margin:0 auto; }
+.clp-back { color:#a7f3d0; font-size:.9rem; text-decoration:none; }
+.clp-hero h1 { font-size:2.1rem; line-height:1.2; margin:12px 0 8px; max-width:680px; }
+.clp-hero .sub { color:#cbd5e1; font-size:1.1rem; max-width:640px; margin:0 0 16px; }
+.clp-hero-meta { display:flex; flex-wrap:wrap; gap:16px; color:#e2e8f0; font-size:.92rem; }
+.clp-hero-meta b { color:#fff; }
+
+.clp-body {
+    max-width:1080px; margin:-64px auto 0; padding:0 20px;
+    display:grid; grid-template-columns:1fr 344px; gap:28px; align-items:start;
+}
+.clp-main { display:flex; flex-direction:column; gap:20px; }
+.clp-card {
+    background:var(--card,#fff); border:1px solid var(--border,#e5e7eb);
+    border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,.06); padding:22px;
+}
+.clp-card h2 { margin:0 0 4px; font-size:1.3rem; }
+.clp-card .count { color:var(--muted); font-size:.9rem; margin-bottom:14px; }
+
+.acc { border:1px solid var(--border); border-radius:12px; margin-bottom:10px; overflow:hidden; }
+.acc > summary {
+    list-style:none; cursor:pointer; padding:14px 16px; font-weight:600;
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    background:color-mix(in srgb, var(--card,#fff) 92%, #16a34a 8%);
+}
+.acc > summary::-webkit-details-marker { display:none; }
+.acc > summary::after { content:"⌄"; font-size:1.2rem; color:var(--muted); transition:transform .2s; }
+.acc[open] > summary::after { transform:rotate(180deg); }
+.acc .sec-count { font-weight:400; color:var(--muted); font-size:.85rem; }
+.lec { display:flex; align-items:center; gap:12px; padding:11px 16px; border-top:1px solid var(--border); text-decoration:none; color:inherit; }
+.lec:hover.playable { background:color-mix(in srgb, var(--card,#fff) 94%, #16a34a 6%); }
+.lec .ic { width:26px; height:26px; flex:0 0 26px; display:flex; align-items:center; justify-content:center; border-radius:50%; font-size:.8rem; background:#16a34a1a; color:#16a34a; }
+.lec.locked .ic { background:var(--border); color:var(--muted); }
+.lec .t { flex:1; }
+.lec .d { color:var(--muted); font-size:.85rem; }
+.lec .pv { color:#16a34a; font-weight:600; font-size:.8rem; }
+
+/* Sticky purchase card */
+.clp-buy { position:sticky; top:20px; }
+.clp-buy-card { background:var(--card,#fff); border:1px solid var(--border,#e5e7eb); border-radius:16px; box-shadow:0 12px 34px rgba(0,0,0,.12); overflow:hidden; }
+.clp-thumb { aspect-ratio:16/9; background:linear-gradient(135deg,#16a34a22,#05966922); display:flex; align-items:center; justify-content:center; font-size:2.6rem; }
+.clp-thumb img { width:100%; height:100%; object-fit:cover; }
+.clp-buy-body { padding:20px; }
+.clp-price { font-size:2rem; font-weight:800; margin-bottom:14px; }
+.clp-btn { display:block; width:100%; text-align:center; padding:13px; border-radius:10px; background:#16a34a; color:#fff; font-weight:700; text-decoration:none; border:none; font-size:1rem; cursor:pointer; }
+.clp-btn:hover { background:#15803d; }
+.clp-incl { list-style:none; padding:0; margin:16px 0 0; color:var(--muted); font-size:.92rem; }
+.clp-incl li { padding:5px 0; }
+
+.clp-banner { background:#fef3c7; border-left:4px solid #d69e2e; color:#7c5e10; padding:12px 16px; border-radius:10px; }
+
+@media (max-width:820px) {
+    .clp-body { grid-template-columns:1fr; margin-top:-56px; }
+    .clp-buy { position:static; order:-1; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div style="max-width:920px; margin:0 auto;">
-    <a href="{% url 'courses:catalog' %}" class="card-meta">← All courses</a>
+<div class="clp-hero">
+    <div class="clp-hero-in">
+        <a href="{% url 'courses:catalog' %}" class="clp-back">← All courses</a>
+        <h1>{{ course.title }}</h1>
+        {% if course.subtitle %}<p class="sub">{{ course.subtitle }}</p>{% endif %}
+        <div class="clp-hero-meta">
+            <span><b>{{ lecture_count }}</b> lecture{{ lecture_count|pluralize }}</span>
+            {% if course.duration_display %}<span><b>{{ course.duration_display }}</b> total</span>{% endif %}
+            {% if course.instructor %}<span>👨‍🏫 {{ course.instructor.display_name }}</span>{% endif %}
+        </div>
+    </div>
+</div>
 
-    <div style="display:grid; grid-template-columns:1.6fr 1fr; gap:24px; margin-top:10px; align-items:start;">
-        <div>
-            <h1 style="margin:0 0 6px;">{{ course.title }}</h1>
-            {% if course.subtitle %}<p style="font-size:1.1rem; color:var(--muted);">{{ course.subtitle }}</p>{% endif %}
-            {% if course.instructor %}<div class="card-meta">👨‍🏫 {{ course.instructor.display_name }}</div>{% endif %}
-            <div class="card-meta" style="margin:12px 0;">
-                {{ lecture_count }} lecture{{ lecture_count|pluralize }}{% if course.duration_display %} · {{ course.duration_display }} total{% endif %}
+<div class="clp-body">
+    <!-- Purchase card -->
+    <aside class="clp-buy">
+        <div class="clp-buy-card">
+            <div class="clp-thumb">
+                {% if course.thumbnail %}<img src="{{ course.thumbnail.url }}" alt="">{% else %}🎬{% endif %}
             </div>
-            {% if course.description %}<p style="color:var(--muted);">{{ course.description|linebreaksbr }}</p>{% endif %}
-
-            {% if enrollment.is_provisional %}
-            <div class="alert alert-warning" style="margin:16px 0;">
-                ⏳ Payment under verification — you can preview the first {{ preview_count }} lecture{{ preview_count|pluralize }} now.
+            <div class="clp-buy-body">
+                <div class="clp-price">₹{{ course.price|floatformat:0 }}</div>
+                {% if enrollment and not enrollment.is_provisional %}
+                <a class="clp-btn" href="{% url 'courses:course' course.slug %}">Go to course →</a>
+                {% else %}
+                <a class="clp-btn" href="{% url 'courses:course_checkout' course.slug %}">Enroll now →</a>
+                {% endif %}
+                <ul class="clp-incl">
+                    <li>✓ Full lifetime access</li>
+                    <li>✓ {{ lecture_count }} on-demand lecture{{ lecture_count|pluralize }}</li>
+                    <li>✓ Watch on mobile &amp; desktop</li>
+                    <li>✓ Progress tracking</li>
+                </ul>
             </div>
-            {% endif %}
+        </div>
+    </aside>
 
-            <h3 style="margin-top:24px;">Course content</h3>
+    <!-- Main content -->
+    <div class="clp-main">
+        {% if enrollment.is_provisional %}
+        <div class="clp-banner">
+            ⏳ Payment under verification — you can preview the first {{ preview_count }} lecture{{ preview_count|pluralize }} now. Full access unlocks once an admin confirms your payment.
+        </div>
+        {% endif %}
+
+        <div class="clp-card">
+            <h2>Course content</h2>
+            <div class="count">{{ sections|length }} section{{ sections|length|pluralize }} · {{ lecture_count }} lecture{{ lecture_count|pluralize }}{% if course.duration_display %} · {{ course.duration_display }}{% endif %}</div>
             {% for s in sections %}
-            <div style="margin-bottom:14px;">
-                <div style="font-weight:600; margin-bottom:6px;">{{ s.obj.title }}</div>
-                <div class="playlist">
-                    {% for l in s.lectures %}
-                    {% if l.unlocked %}
-                    <a class="playlist-item" href="{% url 'courses:learn' course.slug l.obj.pk %}">
-                        <div class="num">{% if l.preview %}▶{% else %}✓{% endif %}</div>
-                        <div>
-                            <div class="pl-title">{{ l.obj.title }}</div>
-                            <div class="pl-meta">{% if l.preview %}Free preview · {% endif %}{{ l.obj.duration_display }}</div>
-                        </div>
-                    </a>
-                    {% else %}
-                    <div class="playlist-item locked">
-                        <div class="num">🔒</div>
-                        <div>
-                            <div class="pl-title">{{ l.obj.title }}</div>
-                            <div class="pl-meta">{{ l.obj.duration_display }}</div>
-                        </div>
-                    </div>
-                    {% endif %}
-                    {% endfor %}
+            <details class="acc" {% if forloop.first %}open{% endif %}>
+                <summary>
+                    <span>{{ s.obj.title }}</span>
+                    <span class="sec-count">{{ s.lectures|length }} lecture{{ s.lectures|length|pluralize }}</span>
+                </summary>
+                {% for l in s.lectures %}
+                {% if l.unlocked %}
+                <a class="lec playable" href="{% url 'courses:learn' course.slug l.obj.pk %}">
+                    <span class="ic">▶</span>
+                    <span class="t">{{ l.obj.title }}</span>
+                    {% if l.preview %}<span class="pv">Preview</span>{% endif %}
+                    <span class="d">{{ l.obj.duration_display }}</span>
+                </a>
+                {% else %}
+                <div class="lec locked">
+                    <span class="ic">🔒</span>
+                    <span class="t">{{ l.obj.title }}</span>
+                    <span class="d">{{ l.obj.duration_display }}</span>
                 </div>
-            </div>
+                {% endif %}
+                {% endfor %}
+            </details>
             {% empty %}
-            <p class="card-meta">Content is being added.</p>
+            <p class="count">Content is being added.</p>
             {% endfor %}
         </div>
 
-        <aside class="card" style="position:sticky; top:20px;">
-            {% if course.thumbnail %}
-            <img src="{{ course.thumbnail.url }}" alt="" style="width:100%; border-radius:10px; margin-bottom:14px;">
-            {% endif %}
-            <div style="font-size:2rem; font-weight:700; margin-bottom:14px;">₹{{ course.price }}</div>
-            {% if enrollment and not enrollment.is_provisional %}
-            <a class="btn btn-block" href="{% url 'courses:course' course.slug %}">Go to course →</a>
-            {% else %}
-            <a class="btn btn-block" href="{% url 'courses:course_checkout' course.slug %}">Enroll now →</a>
-            {% endif %}
-            <div class="card-meta" style="margin-top:12px;">
-                ✓ Lifetime access<br>
-                ✓ Learn at your own pace<br>
-                ✓ Progress tracking
-            </div>
-        </aside>
+        {% if course.description %}
+        <div class="clp-card">
+            <h2>About this course</h2>
+            <p style="color:var(--muted); margin:10px 0 0; line-height:1.7;">{{ course.description|linebreaksbr }}</p>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
