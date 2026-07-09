@@ -45,6 +45,19 @@
         </div>
     </div>
 </header>
+{% else %}
+<header class="topbar">
+    <div class="topbar-inner">
+        <a class="brand" href="{% url 'courses:catalog' %}">
+            <img src="{% static 'images/logo.png' %}" alt="Fighter Bull's">
+        </a>
+        <div class="topbar-user">
+            <a href="{% url 'courses:catalog' %}">Courses</a>
+            <a href="{% url 'courses:pricing' %}">Plans</a>
+            <a class="btn btn-sm" href="{% url 'accounts:login' %}">Login</a>
+        </div>
+    </div>
+</header>
 {% endif %}
 
 <main class="page">

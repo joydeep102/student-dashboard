@@ -191,6 +191,71 @@ class CheckoutTests(BaseData):
         self.assertContains(res, "Recorded Trading")
 
 
+class PublicCheckoutTests(BaseData):
+    """Logged-out visitors (from the marketing site) browse + self-register."""
+
+    def test_catalog_is_public(self):
+        res = self.client.get(reverse("courses:catalog"))  # no login
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Recorded Trading")
+        self.assertContains(res, "From ₹")
+
+    def test_landing_is_public(self):
+        res = self.client.get(self.batch.get_absolute_url())  # no login
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Enroll now")
+
+    def test_checkout_prompts_registration_when_logged_out(self):
+        url = reverse("courses:checkout", args=[self.batch.code]) + f"?plan={self.advance.slug}"
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Create your account")
+        self.assertContains(res, 'name="password"')
+
+    @override_settings(UPI_VPA="pay@upi")
+    def test_register_creates_account_and_reaches_payment(self):
+        url = reverse("courses:checkout_register", args=[self.batch.code])
+        res = self.client.post(url, {
+            "plan": self.advance.slug,
+            "name": "New Buyer",
+            "email": "buyer@test.com",
+            "phone": "9998887776",
+            "password": "s3curePass!22",
+        })
+        # Account created with the details, logged in, redirected to checkout.
+        u = User.objects.get(email="buyer@test.com")
+        self.assertEqual(u.role, "student")
+        self.assertEqual(u.phone, "9998887776")
+        self.assertEqual(u.first_name, "New")
+        self.assertRedirects(
+            res,
+            reverse("courses:checkout", args=[self.batch.code]) + f"?plan={self.advance.slug}",
+        )
+        # Following that redirect now shows the payment page (logged in).
+        pay_page = self.client.get(res.url)
+        self.assertContains(pay_page, "Amount to pay")
+        self.assertContains(pay_page, "Pay by UPI")
+
+    def test_register_rejects_duplicate_email(self):
+        User.objects.create_user(email="dupe@test.com", password="x", role="student")
+        url = reverse("courses:checkout_register", args=[self.batch.code])
+        res = self.client.post(url, {
+            "plan": self.advance.slug, "name": "A", "email": "dupe@test.com",
+            "phone": "1", "password": "s3curePass!22",
+        })
+        self.assertContains(res, "already exists")
+        self.assertEqual(User.objects.filter(email="dupe@test.com").count(), 1)
+
+    def test_register_rejects_weak_password(self):
+        url = reverse("courses:checkout_register", args=[self.batch.code])
+        res = self.client.post(url, {
+            "plan": self.advance.slug, "name": "A", "email": "weak@test.com",
+            "phone": "1", "password": "123",
+        })
+        self.assertEqual(res.status_code, 200)
+        self.assertFalse(User.objects.filter(email="weak@test.com").exists())
+
+
 @override_settings(
     RAZORPAY_KEY_ID="rzp_test", RAZORPAY_KEY_SECRET="secret", RAZORPAY_ENABLED=True
 )

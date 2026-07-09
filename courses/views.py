@@ -2,7 +2,10 @@ import json
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.http import Http404, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -177,9 +180,12 @@ def _fmt_hm(seconds):
     return f"{h}h {m}m" if h else f"{m}m"
 
 
-@login_required
 def catalog(request):
-    """Browse recorded (self-paced) courses available to buy."""
+    """Public price/catalog page — recorded (self-paced) courses available to buy.
+
+    This is the URL to link from the marketing site (fighterbulls.in); no login
+    is required to browse courses and see prices.
+    """
     plans = list(Plan.objects.filter(is_active=True).order_by("level"))
     min_price = min((int(p.price) for p in plans), default=0)
     batches = (
@@ -188,11 +194,13 @@ def catalog(request):
         .prefetch_related("lessons")
         .order_by("-created_at")
     )
-    owned = set(
-        BatchEnrollment.objects.filter(student=request.user, is_active=True).values_list(
-            "batch_id", flat=True
+    owned = set()
+    if request.user.is_authenticated:
+        owned = set(
+            BatchEnrollment.objects.filter(student=request.user, is_active=True).values_list(
+                "batch_id", flat=True
+            )
         )
-    )
     cards = [
         {
             "batch": b,
@@ -224,15 +232,18 @@ def _course_landing(request, batch):
     )
 
 
-@login_required
 def batch_detail(request, code):
     batch = get_object_or_404(Batch, code=code, is_active=True)
-    enrollment, classes_view, lessons_view = _batch_content(request, batch)
+    enrollment = get_enrollment(request.user, batch)
     if enrollment is None:
-        # Self-paced courses show a buy page to non-students; live batches don't.
+        # Self-paced courses show a public buy page; live batches stay private.
         if batch.is_self_paced:
             return _course_landing(request, batch)
+        if not request.user.is_authenticated:
+            return redirect(f"{reverse('accounts:login')}?next={request.path}")
         return render(request, "courses/not_enrolled.html", {"batch": batch}, status=403)
+
+    _, classes_view, lessons_view = _batch_content(request, batch)
 
     lessons_total = len(lessons_view)
     lessons_unlocked = sum(1 for l in lessons_view if l["unlocked"])
@@ -486,12 +497,81 @@ def _qr_data_uri(data):
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
-@login_required
+def _register_student(request, data):
+    """Create + log in a student account from checkout form data.
+
+    Returns (user, None) on success or (None, error_message). Used only for the
+    public course-checkout flow (accounts are otherwise admin-created).
+    """
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+    phone = (data.get("phone") or "").strip()
+    name = (data.get("name") or "").strip()
+
+    if not email or not password:
+        return None, "Please enter your email and choose a password."
+
+    User = get_user_model()
+    if User.objects.filter(email__iexact=email).exists():
+        return None, "An account with this email already exists — please log in instead."
+
+    try:
+        validate_password(password)
+    except ValidationError as exc:
+        return None, " ".join(exc.messages)
+
+    first, _, last = name.partition(" ")
+    user = User.objects.create_user(
+        email=email,
+        password=password,
+        role="student",
+        first_name=first,
+        last_name=last,
+        phone=phone,
+    )
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return user, None
+
+
+@require_POST
+def checkout_register(request, code):
+    """Public checkout step 1: create the visitor's account, then continue to pay."""
+    batch = get_object_or_404(Batch, code=code, is_active=True)
+    plan = get_object_or_404(Plan, slug=request.POST.get("plan"), is_active=True)
+    back = f"{reverse('courses:checkout', args=[code])}?plan={plan.slug}"
+
+    if request.user.is_authenticated:
+        return redirect(back)
+
+    user, error = _register_student(request, request.POST)
+    if error:
+        return render(
+            request,
+            "courses/checkout_register.html",
+            {
+                "batch": batch,
+                "plan": plan,
+                "amount": _amount_for(None, plan),
+                "login_next": back,
+                "error": error,
+                "form": {
+                    "name": request.POST.get("name", ""),
+                    "email": request.POST.get("email", ""),
+                    "phone": request.POST.get("phone", ""),
+                },
+            },
+        )
+    messages.success(request, "Account created — complete your payment below to enroll.")
+    return redirect(back)
+
+
 def checkout(request, code):
     """Buy access to a batch on a chosen plan (Basic/Advance/…).
 
-    Without ``?plan=`` it shows a plan chooser; with a plan it shows the payment
-    page (manual UPI QR + Razorpay button, whichever are configured).
+    Public: a visitor from the marketing site can reach this without an account.
+    Without ``?plan=`` it shows a plan chooser; with a plan, a logged-out visitor
+    is asked to create an account first, then lands on the payment page (manual
+    UPI QR + Razorpay button, whichever are configured).
     """
     batch = get_object_or_404(Batch, code=code, is_active=True)
     plans = list(Plan.objects.filter(is_active=True).order_by("level"))
@@ -517,6 +597,20 @@ def checkout(request, code):
         return redirect(batch.get_absolute_url())
 
     amount = _amount_for(enrollment, plan)
+
+    # Logged-out visitor: create an account before paying.
+    if not request.user.is_authenticated:
+        return render(
+            request,
+            "courses/checkout_register.html",
+            {
+                "batch": batch,
+                "plan": plan,
+                "amount": amount,
+                "login_next": f"{reverse('courses:checkout', args=[code])}?plan={plan.slug}",
+                "form": {},
+            },
+        )
 
     upi = None
     if settings.UPI_VPA and amount > 0:

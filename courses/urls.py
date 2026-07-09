@@ -14,6 +14,7 @@ urlpatterns = [
     path("batch/<slug:code>/lesson/<int:pk>/progress/", views.lesson_progress, name="lesson_progress"),
     # Recorded-course checkout
     path("batch/<slug:code>/checkout/", views.checkout, name="checkout"),
+    path("batch/<slug:code>/checkout/register/", views.checkout_register, name="checkout_register"),
     path("batch/<slug:code>/checkout/upi/", views.upi_submit, name="upi_submit"),
     path("batch/<slug:code>/checkout/razorpay/order/", views.razorpay_order, name="razorpay_order"),
     path("batch/<slug:code>/checkout/razorpay/verify/", views.razorpay_verify, name="razorpay_verify"),

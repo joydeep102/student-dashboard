@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Create account — {{ plan.name }}{% endblock %}
+
+{% block content %}
+<div style="max-width:460px; margin:0 auto;">
+    <a href="{% url 'courses:checkout' batch.code %}" class="card-meta">← Change plan</a>
+    <h1 style="margin-top:6px;">Enroll in {{ plan.name }}</h1>
+    <div class="card-meta">{{ batch.course.title }} · {{ batch.name }} · <strong>₹{{ amount }}</strong></div>
+
+    {% if error %}<div class="alert alert-error" style="margin:14px 0;">{{ error }}</div>{% endif %}
+
+    <div class="card" style="margin-top:16px;">
+        <h3 style="margin-top:0;">Create your account</h3>
+        <p style="color:var(--muted);">Step 1 of 2 — you'll pay on the next step.</p>
+        <form method="post" action="{% url 'courses:checkout_register' batch.code %}">
+            {% csrf_token %}
+            <input type="hidden" name="plan" value="{{ plan.slug }}">
+
+            <label class="card-meta" for="name">Full name</label>
+            <input id="name" name="name" value="{{ form.name }}" required
+                   style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">
+
+            <label class="card-meta" for="email">Email</label>
+            <input id="email" type="email" name="email" value="{{ form.email }}" required
+                   style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">
+
+            <label class="card-meta" for="phone">Phone number</label>
+            <input id="phone" name="phone" value="{{ form.phone }}" required
+                   style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">
+
+            <label class="card-meta" for="password">Password</label>
+            <input id="password" type="password" name="password" required minlength="8"
+                   style="width:100%; padding:10px; margin:6px 0 14px; border:1px solid var(--border); border-radius:8px;">
+
+            <button type="submit" class="btn btn-block">Continue to payment →</button>
+        </form>
+        <p class="card-meta" style="margin-top:14px;">
+            Already have an account?
+            <a href="{% url 'accounts:login' %}?next={{ login_next|urlencode }}">Log in</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
