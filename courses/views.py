@@ -1,12 +1,20 @@
+import json
+
+from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
 from classroom.models import LiveClass
 
-from .access import can_access, get_enrollment
-from .models import Batch, BatchEnrollment, Lesson, Plan
+from . import razorpay_api
+from .access import can_access, get_enrollment, preview_count, unlocked_lesson_ids
+from .models import Batch, BatchEnrollment, Lesson, LessonProgress, Payment, Plan
 
 
 @login_required
@@ -24,15 +32,29 @@ def dashboard(request):
     )
     plan_by_batch = {e.batch_id: e.plan for e in enrollments}
 
-    # Per-batch cards with accessible/total lesson counts + a resume target.
+    # Lessons this student has finished watching (for real completion %).
+    completed_ids = set(
+        LessonProgress.objects.filter(student=request.user, completed=True).values_list(
+            "lesson_id", flat=True
+        )
+    )
+
+    # Per-batch cards with accessible/completed lesson counts + a resume target.
     batch_cards = []
     lessons_available = 0
+    lessons_done = 0
     continue_lesson = None
+    has_provisional = False
     for e in enrollments:
         lessons = list(e.batch.lessons.all())
-        accessible = [l for l in lessons if e.plan.level >= l.required_level]
+        unlocked = unlocked_lesson_ids(e, lessons)
+        accessible = [l for l in lessons if l.id in unlocked]
         total, acc = len(lessons), len(accessible)
+        if e.is_provisional:
+            has_provisional = True
+        done = sum(1 for l in accessible if l.id in completed_ids)
         lessons_available += acc
+        lessons_done += done
         batch_cards.append(
             {
                 "batch": e.batch,
@@ -40,11 +62,16 @@ def dashboard(request):
                 "total": total,
                 "accessible": acc,
                 "locked": total - acc,
-                "pct": round(acc / total * 100) if total else 0,
+                "completed": done,
+                "provisional": e.is_provisional,
+                # Real progress: how much of the accessible content is finished.
+                "pct": round(done / acc * 100) if acc else 0,
             }
         )
+        # Resume at the first unfinished accessible lesson (else the first one).
         if continue_lesson is None and accessible:
-            continue_lesson = {"lesson": accessible[0], "batch": e.batch}
+            nxt = next((l for l in accessible if l.id not in completed_ids), accessible[0])
+            continue_lesson = {"lesson": nxt, "batch": e.batch}
 
     # Upcoming classes across all batches, tagged with unlock state.
     upcoming, next_class, upcoming_count = [], None, 0
@@ -111,10 +138,12 @@ def dashboard(request):
             "continue_lesson": continue_lesson,
             "top_plan": top_plan,
             "is_top_plan": is_top_plan,
+            "has_provisional": has_provisional,
             "pending_homework": pending_homework,
             "stats": {
                 "batches": len(enrollments),
                 "lessons": lessons_available,
+                "lessons_completed": lessons_done,
                 "upcoming": upcoming_count,
             },
         },
@@ -124,19 +153,75 @@ def dashboard(request):
 def _batch_content(request, batch):
     """Shared: gather a batch's classes & lessons annotated with lock state."""
     enrollment = get_enrollment(request.user, batch)
-    plan_level = enrollment.plan.level if enrollment else -1
 
     live_classes = (
         batch.live_classes.exclude(status=LiveClass.Status.CANCELLED)
         .prefetch_related("allowed_plans")
         .order_by("start_time")
     )
-    lessons = batch.lessons.select_related("required_plan").all()
+    lessons = list(batch.lessons.select_related("required_plan").all())
 
     plan = enrollment.plan if enrollment else None
+    unlocked = unlocked_lesson_ids(enrollment, lessons)
     classes_view = [{"obj": c, "unlocked": c.is_open_to(plan)} for c in live_classes]
-    lessons_view = [{"obj": l, "unlocked": plan_level >= l.required_level} for l in lessons]
+    lessons_view = [{"obj": l, "unlocked": l.id in unlocked} for l in lessons]
     return enrollment, classes_view, lessons_view
+
+
+def _fmt_hm(seconds):
+    """'3h 20m' / '45m' from a total number of seconds (blank if zero)."""
+    if not seconds:
+        return ""
+    m = seconds // 60
+    h, m = divmod(m, 60)
+    return f"{h}h {m}m" if h else f"{m}m"
+
+
+@login_required
+def catalog(request):
+    """Browse recorded (self-paced) courses available to buy."""
+    plans = list(Plan.objects.filter(is_active=True).order_by("level"))
+    min_price = min((int(p.price) for p in plans), default=0)
+    batches = (
+        Batch.objects.filter(is_self_paced=True, is_active=True, course__is_published=True)
+        .select_related("course")
+        .prefetch_related("lessons")
+        .order_by("-created_at")
+    )
+    owned = set(
+        BatchEnrollment.objects.filter(student=request.user, is_active=True).values_list(
+            "batch_id", flat=True
+        )
+    )
+    cards = [
+        {
+            "batch": b,
+            "lesson_count": len(b.lessons.all()),
+            "duration": _fmt_hm(sum(l.duration_seconds for l in b.lessons.all())),
+            "owned": b.id in owned,
+        }
+        for b in batches
+    ]
+    return render(request, "courses/catalog.html", {"cards": cards, "min_price": min_price})
+
+
+def _course_landing(request, batch):
+    """Udemy-style landing/preview for a self-paced course the student hasn't
+    bought yet: the curriculum (locked) plus plans to enroll."""
+    plans = list(Plan.objects.filter(is_active=True).order_by("level"))
+    lessons = list(batch.lessons.select_related("required_plan").all())
+    return render(
+        request,
+        "courses/course_landing.html",
+        {
+            "batch": batch,
+            "lessons": lessons,
+            "lesson_count": len(lessons),
+            "total_duration": _fmt_hm(sum(l.duration_seconds for l in lessons)),
+            "options": [{"plan": p, "amount": int(p.price)} for p in plans],
+            "min_price": min((int(p.price) for p in plans), default=0),
+        },
+    )
 
 
 @login_required
@@ -144,6 +229,9 @@ def batch_detail(request, code):
     batch = get_object_or_404(Batch, code=code, is_active=True)
     enrollment, classes_view, lessons_view = _batch_content(request, batch)
     if enrollment is None:
+        # Self-paced courses show a buy page to non-students; live batches don't.
+        if batch.is_self_paced:
+            return _course_landing(request, batch)
         return render(request, "courses/not_enrolled.html", {"batch": batch}, status=403)
 
     lessons_total = len(lessons_view)
@@ -157,6 +245,8 @@ def batch_detail(request, code):
             "enrollment": enrollment,
             "classes_view": classes_view,
             "lessons_view": lessons_view,
+            "is_provisional": enrollment.is_provisional,
+            "preview_count": preview_count(),
             "stats": {
                 "lessons_total": lessons_total,
                 "lessons_unlocked": lessons_unlocked,
@@ -186,10 +276,23 @@ def lesson_view(request, code, pk):
         )
 
     lessons = list(batch.lessons.select_related("required_plan").all())
-    annotated = [{"obj": l, "unlocked": enrollment.plan.level >= l.required_level} for l in lessons]
-    idx = next((i for i, l in enumerate(lessons) if l.pk == lesson.pk), 0)
-    accessible = [l for l in lessons if enrollment.plan.level >= l.required_level]
+    unlocked = unlocked_lesson_ids(enrollment, lessons)
+    # This student's progress across the batch (for playlist ticks + resume).
+    progress = {
+        p.lesson_id: p
+        for p in LessonProgress.objects.filter(student=request.user, lesson__batch=batch)
+    }
+    annotated = [
+        {
+            "obj": l,
+            "unlocked": l.id in unlocked,
+            "completed": l.id in progress and progress[l.id].completed,
+        }
+        for l in lessons
+    ]
+    accessible = [l for l in lessons if l.id in unlocked]
     a_idx = next((i for i, l in enumerate(accessible) if l.pk == lesson.pk), 0)
+    this_progress = progress.get(lesson.id)
     return render(
         request,
         "courses/lesson.html",
@@ -197,10 +300,41 @@ def lesson_view(request, code, pk):
             "batch": batch,
             "lesson": lesson,
             "lessons": annotated,
+            "resume_position": this_progress.position_seconds if this_progress else 0,
+            "is_completed": bool(this_progress and this_progress.completed),
             "prev_lesson": accessible[a_idx - 1] if a_idx > 0 else None,
             "next_lesson": accessible[a_idx + 1] if a_idx < len(accessible) - 1 else None,
         },
     )
+
+
+@login_required
+@require_POST
+def lesson_progress(request, code, pk):
+    """Save a student's watch position for a lesson (called by the player).
+
+    Accepts ``position`` (seconds) and optional ``completed=1``. Access is gated
+    exactly like the video source, so progress can only be saved for lessons the
+    student may actually watch.
+    """
+    batch = get_object_or_404(Batch, code=code, is_active=True)
+    lesson = get_object_or_404(Lesson, pk=pk, batch=batch)
+    enrollment = get_enrollment(request.user, batch)
+    if not can_access(enrollment, lesson):
+        raise Http404("Not available.")
+
+    try:
+        position = max(0, int(float(request.POST.get("position", 0))))
+    except (TypeError, ValueError):
+        position = 0
+
+    prog, _ = LessonProgress.objects.get_or_create(student=request.user, lesson=lesson)
+    prog.position_seconds = position
+    # Completion only ever latches on — never un-completes on a re-watch.
+    if request.POST.get("completed") == "1":
+        prog.completed = True
+    prog.save(update_fields=["position_seconds", "completed", "updated_at"])
+    return JsonResponse({"ok": True, "completed": prog.completed})
 
 
 @login_required
@@ -301,3 +435,270 @@ def pricing(request):
         "courses/pricing.html",
         {"plan_cards": cards, "current_plan": current_plan},
     )
+
+
+# ---------------------------------------------------------------------------
+# Recorded-course checkout — manual UPI + Razorpay online
+# ---------------------------------------------------------------------------
+def _amount_for(enrollment, plan):
+    """Rupees to charge for ``plan``: the upgrade difference when the student is
+    already enrolled on a lower tier, else the plan's full price."""
+    if enrollment and enrollment.plan.level < plan.level:
+        return max(int(plan.price - enrollment.plan.price), 0)
+    return int(plan.price)
+
+
+def _upi_links(amount, note):
+    """UPI deep links for a payment — a generic one plus app-specific schemes.
+
+    On a phone these open the chosen app straight to a pre-filled payment; on
+    desktop they do nothing (the QR is the fallback there).
+    """
+    from urllib.parse import urlencode
+
+    query = urlencode(
+        {
+            "pa": settings.UPI_VPA,
+            "pn": settings.UPI_PAYEE_NAME,
+            "am": f"{amount}",
+            "cu": "INR",
+            "tn": note[:50],
+        }
+    )
+    return {
+        "generic": "upi://pay?" + query,
+        "gpay": "tez://upi/pay?" + query,
+        "phonepe": "phonepe://pay?" + query,
+        "paytm": "paytmmp://pay?" + query,
+    }
+
+
+def _qr_data_uri(data):
+    """Render ``data`` as a QR PNG returned as a base64 data URI (self-contained)."""
+    import base64
+    import io
+
+    import qrcode
+
+    img = qrcode.make(data)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+@login_required
+def checkout(request, code):
+    """Buy access to a batch on a chosen plan (Basic/Advance/…).
+
+    Without ``?plan=`` it shows a plan chooser; with a plan it shows the payment
+    page (manual UPI QR + Razorpay button, whichever are configured).
+    """
+    batch = get_object_or_404(Batch, code=code, is_active=True)
+    plans = list(Plan.objects.filter(is_active=True).order_by("level"))
+    enrollment = get_enrollment(request.user, batch)
+    current_level = enrollment.plan.level if enrollment else -1
+
+    plan = next((p for p in plans if p.slug == request.GET.get("plan")), None)
+
+    if plan is None:
+        options = [
+            {"plan": p, "amount": _amount_for(enrollment, p)}
+            for p in plans
+            if p.level > current_level
+        ]
+        return render(
+            request,
+            "courses/checkout_choose.html",
+            {"batch": batch, "options": options, "enrollment": enrollment},
+        )
+
+    # Already have this (or higher) access — nothing to buy.
+    if plan.level <= current_level:
+        return redirect(batch.get_absolute_url())
+
+    amount = _amount_for(enrollment, plan)
+
+    upi = None
+    if settings.UPI_VPA and amount > 0:
+        links = _upi_links(amount, f"{batch.code} {plan.slug}")
+        upi = {
+            "vpa": settings.UPI_VPA,
+            "payee": settings.UPI_PAYEE_NAME,
+            "links": links,
+            "qr": _qr_data_uri(links["generic"]),
+        }
+
+    return render(
+        request,
+        "courses/checkout.html",
+        {
+            "batch": batch,
+            "plan": plan,
+            "amount": amount,
+            "enrollment": enrollment,
+            "upi": upi,
+            "preview_count": preview_count(),
+            "razorpay_enabled": settings.RAZORPAY_ENABLED,
+            "razorpay_key_id": settings.RAZORPAY_KEY_ID,
+        },
+    )
+
+
+def _resolve_purchase(request, code):
+    """Shared guard for checkout POSTs: return (batch, plan, enrollment, amount).
+
+    Raises Http404 for an unknown batch/plan; returns ``amount`` of 0 (caller
+    should reject) when the student already has equal-or-higher access.
+    """
+    batch = get_object_or_404(Batch, code=code, is_active=True)
+    plan = get_object_or_404(Plan, slug=request.POST.get("plan"), is_active=True)
+    enrollment = get_enrollment(request.user, batch)
+    current_level = enrollment.plan.level if enrollment else -1
+    amount = 0 if plan.level <= current_level else _amount_for(enrollment, plan)
+    return batch, plan, enrollment, amount
+
+
+@login_required
+@require_POST
+def upi_submit(request, code):
+    """Record a manual-UPI payment (reference and/or screenshot) for admin review.
+
+    The student must provide at least one proof of payment — a transaction / UTR
+    number or a screenshot. On submit they get provisional preview access to the
+    first few lessons; full access follows once an admin verifies the payment.
+    """
+    batch, plan, enrollment, amount = _resolve_purchase(request, code)
+    if amount <= 0:
+        return redirect(batch.get_absolute_url())
+
+    reference = (request.POST.get("upi_reference") or "").strip()
+    screenshot = request.FILES.get("screenshot")
+    if not reference and not screenshot:
+        messages.error(
+            request,
+            "Please enter your UPI transaction/UTR number or upload a payment screenshot.",
+        )
+        return redirect(f"{reverse('courses:checkout', args=[code])}?plan={plan.slug}")
+
+    payment = Payment.objects.create(
+        student=request.user,
+        batch=batch,
+        plan=plan,
+        amount=amount,
+        method=Payment.Method.MANUAL_UPI,
+        status=Payment.Status.PENDING,
+        upi_reference=reference,
+        screenshot=screenshot,
+    )
+    payment.grant_provisional_access()
+    return render(
+        request,
+        "courses/checkout_pending.html",
+        {"batch": batch, "plan": plan, "preview_count": preview_count()},
+    )
+
+
+@login_required
+@require_POST
+def razorpay_order(request, code):
+    """Create a Razorpay order (+ a pending Payment) for the online checkout."""
+    if not settings.RAZORPAY_ENABLED:
+        return JsonResponse({"error": "Online payment is not available."}, status=400)
+
+    batch, plan, enrollment, amount = _resolve_purchase(request, code)
+    if amount <= 0:
+        return JsonResponse({"error": "You already have this access."}, status=400)
+
+    payment = Payment.objects.create(
+        student=request.user,
+        batch=batch,
+        plan=plan,
+        amount=amount,
+        method=Payment.Method.RAZORPAY,
+        status=Payment.Status.CREATED,
+    )
+    try:
+        order = razorpay_api.create_order(
+            amount * 100,
+            receipt=f"pay_{payment.id}",
+            notes={"payment_id": str(payment.id), "batch": batch.code, "plan": plan.slug},
+        )
+    except Exception:
+        payment.status = Payment.Status.FAILED
+        payment.save(update_fields=["status"])
+        return JsonResponse({"error": "Could not start the payment. Please try again."}, status=502)
+
+    payment.razorpay_order_id = order["id"]
+    payment.save(update_fields=["razorpay_order_id"])
+    return JsonResponse(
+        {
+            "order_id": order["id"],
+            "amount": order["amount"],
+            "currency": "INR",
+            "key_id": settings.RAZORPAY_KEY_ID,
+            "name": settings.UPI_PAYEE_NAME,
+            "description": f"{batch.name} · {plan.name}",
+            "prefill": {
+                "name": request.user.display_name,
+                "email": request.user.email,
+                "contact": request.user.phone,
+            },
+        }
+    )
+
+
+@login_required
+@require_POST
+def razorpay_verify(request, code):
+    """Verify the checkout callback signature and unlock access immediately.
+
+    This is the browser-side confirmation; the webhook is the authoritative one
+    and safely re-runs the same idempotent ``mark_paid``.
+    """
+    order_id = request.POST.get("razorpay_order_id")
+    payment_id = request.POST.get("razorpay_payment_id")
+    signature = request.POST.get("razorpay_signature")
+    payment = get_object_or_404(Payment, razorpay_order_id=order_id, student=request.user)
+
+    if not razorpay_api.verify_checkout_signature(order_id, payment_id, signature):
+        payment.status = Payment.Status.FAILED
+        payment.save(update_fields=["status"])
+        return JsonResponse({"ok": False, "error": "Payment could not be verified."}, status=400)
+
+    payment.razorpay_payment_id = payment_id
+    payment.razorpay_signature = signature
+    payment.save(update_fields=["razorpay_payment_id", "razorpay_signature"])
+    payment.mark_paid()
+    return JsonResponse({"ok": True, "redirect": payment.batch.get_absolute_url()})
+
+
+@csrf_exempt
+@require_POST
+def razorpay_webhook(request):
+    """Authoritative payment confirmation from Razorpay (server-to-server).
+
+    Verifies the signature, then unlocks access on ``payment.captured`` /
+    ``order.paid``. Idempotent: a repeat delivery is a no-op.
+    """
+    signature = request.headers.get("X-Razorpay-Signature", "")
+    raw = request.body
+    if not razorpay_api.verify_webhook_signature(raw, signature):
+        return HttpResponseBadRequest("invalid signature")
+
+    try:
+        event = json.loads(raw.decode())
+    except (ValueError, UnicodeDecodeError):
+        return HttpResponseBadRequest("invalid payload")
+
+    if event.get("event") in ("payment.captured", "order.paid"):
+        payload = event.get("payload", {})
+        entity = payload.get("payment", {}).get("entity", {})
+        order_id = entity.get("order_id") or payload.get("order", {}).get("entity", {}).get("id")
+        if order_id:
+            payment = Payment.objects.filter(razorpay_order_id=order_id).first()
+            if payment:
+                if entity.get("id"):
+                    payment.razorpay_payment_id = entity["id"]
+                    payment.save(update_fields=["razorpay_payment_id"])
+                payment.mark_paid()
+    return JsonResponse({"ok": True})

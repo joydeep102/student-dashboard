@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Payment submitted{% endblock %}
+
+{% block content %}
+<div class="empty" style="max-width:520px; margin:60px auto;">
+    <div style="font-size:2.5rem;">⏳</div>
+    <h1 style="margin-top:10px;">Payment submitted</h1>
+    <p>Thanks! We've recorded your UPI payment for
+        <strong>{{ plan.name }} — {{ batch.name }}</strong>.</p>
+    <p>🎬 You can start watching the first <strong>{{ preview_count }} lesson{{ preview_count|pluralize }}</strong> right now.
+        Once an admin verifies your payment, the <strong>full course</strong> unlocks
+        automatically — it'll show up on your dashboard.</p>
+    <div style="margin-top:14px; display:flex; gap:10px; justify-content:center;">
+        <a class="btn" href="{{ batch.get_absolute_url }}">Start watching →</a>
+        <a class="btn btn-ghost" href="{% url 'courses:dashboard' %}">Dashboard</a>
+    </div>
+</div>
+{% endblock %}

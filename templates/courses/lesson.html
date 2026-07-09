@@ -13,7 +13,11 @@
         <!-- Branded player: video plays here with no YouTube chrome.
              Source loaded from data-source-url, never in the HTML. -->
         <div class="vplayer" id="vplayer"
-             data-source-url="{% url 'courses:lesson_source' batch.code lesson.pk %}">
+             data-source-url="{% url 'courses:lesson_source' batch.code lesson.pk %}"
+             data-progress-url="{% url 'courses:lesson_progress' batch.code lesson.pk %}"
+             data-resume="{{ resume_position }}"
+             data-completed="{{ is_completed|yesno:'1,0' }}"
+             data-csrf="{{ csrf_token }}">
             <div class="loading">Loading player…</div>
         </div>
 
@@ -35,12 +39,12 @@
         <h3>Batch content</h3>
         {% for l in lessons %}
         {% if l.unlocked %}
-        <a class="playlist-item {% if l.obj.pk == lesson.pk %}active{% endif %}"
+        <a class="playlist-item {% if l.obj.pk == lesson.pk %}active{% endif %} {% if l.completed %}done{% endif %}"
            href="{% url 'courses:lesson' batch.code l.obj.pk %}">
-            <div class="num">{{ forloop.counter }}</div>
+            <div class="num">{% if l.completed %}✓{% else %}{{ forloop.counter }}{% endif %}</div>
             <div>
                 <div class="pl-title">{{ l.obj.title }}</div>
-                {% if l.obj.duration_display %}<div class="pl-meta">{{ l.obj.duration_display }}</div>{% endif %}
+                {% if l.obj.duration_display %}<div class="pl-meta">{{ l.obj.duration_display }}{% if l.completed %} · Completed{% endif %}</div>{% endif %}
             </div>
         </a>
         {% else %}
@@ -49,6 +53,9 @@
             <div>
                 <div class="pl-title">{{ l.obj.title }}</div>
                 <div class="pl-meta">Requires {{ l.obj.required_plan.name }}</div>
+                {% if batch.is_self_paced %}
+                <a class="pl-meta" style="text-decoration:underline;" href="{% url 'courses:checkout' batch.code %}?plan={{ l.obj.required_plan.slug }}">Upgrade to unlock →</a>
+                {% endif %}
             </div>
         </div>
         {% endif %}

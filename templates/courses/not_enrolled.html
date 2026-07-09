@@ -5,7 +5,11 @@
     <div style="font-size:2.5rem;">🔒</div>
     <h1 style="margin-top:10px;">Not in this batch</h1>
     <p>You need to be enrolled in <strong>{{ batch.name }}</strong> to view this content.</p>
+    {% if batch.is_self_paced %}
+    <a class="btn" href="{% url 'courses:checkout' batch.code %}" style="margin-top:10px;">View plans & enroll →</a>
+    {% else %}
     <p>Please contact your administrator to get access.</p>
     <a class="btn" href="{% url 'courses:dashboard' %}" style="margin-top:10px;">Back to dashboard</a>
+    {% endif %}
 </div>
 {% endblock %}

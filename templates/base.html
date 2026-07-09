@@ -24,6 +24,7 @@
         <label for="navtoggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
         <nav class="topnav" id="mainnav">
             <a href="{% url 'courses:dashboard' %}">Dashboard</a>
+            <a href="{% url 'courses:catalog' %}">Courses</a>
             <a href="{% url 'courses:pricing' %}">Plans</a>
             {% if user.role == 'student' and hw_has %}<a href="{% url 'homework:student_list' %}">📝 Homework{% if hw_pending %} <span class="nav-badge">{{ hw_pending }}</span>{% endif %}</a>{% endif %}
             {% if user.role == 'instructor' or user.is_superuser %}<a href="{% url 'trainers:dashboard' %}">🎬 Trainer Studio</a>

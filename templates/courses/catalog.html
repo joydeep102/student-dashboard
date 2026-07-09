@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Recorded courses{% endblock %}
+
+{% block content %}
+<div style="max-width:1000px; margin:0 auto;">
+    <h1>Recorded courses</h1>
+    <p style="color:var(--muted); margin-bottom:22px;">
+        Learn at your own pace. Buy once, watch anytime, and track your progress.
+    </p>
+
+    {% if not cards %}
+    <div class="empty" style="margin-top:40px;">
+        <div style="font-size:2rem;">🎬</div>
+        <p>No recorded courses are available right now. Check back soon.</p>
+    </div>
+    {% else %}
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:18px;">
+        {% for c in cards %}
+        <a class="card" href="{{ c.batch.get_absolute_url }}" style="display:flex; flex-direction:column; text-decoration:none;">
+            {% if c.batch.course.thumbnail %}
+            <img src="{{ c.batch.course.thumbnail.url }}" alt="" style="width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:10px; margin-bottom:12px;">
+            {% else %}
+            <div style="width:100%; aspect-ratio:16/9; border-radius:10px; margin-bottom:12px; background:linear-gradient(135deg,#16a34a22,#05966922); display:flex; align-items:center; justify-content:center; font-size:2rem;">🎬</div>
+            {% endif %}
+            <h3 style="margin:0 0 4px;">{{ c.batch.course.title }}</h3>
+            <div class="card-meta">{{ c.batch.name }}</div>
+            <div class="card-meta" style="margin:8px 0;">
+                {{ c.lesson_count }} lesson{{ c.lesson_count|pluralize }}{% if c.duration %} · {{ c.duration }}{% endif %}
+            </div>
+            <div style="margin-top:auto; padding-top:10px;">
+                {% if c.owned %}
+                <span class="btn btn-ghost btn-sm btn-block">✓ Enrolled — Continue</span>
+                {% else %}
+                <span class="btn btn-sm btn-block">From ₹{{ min_price }} — Enroll</span>
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

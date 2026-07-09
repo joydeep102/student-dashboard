@@ -14,8 +14,45 @@
     if (!root) return;
 
     const sourceUrl = root.dataset.sourceUrl;
+    const progressUrl = root.dataset.progressUrl;
+    const csrf = root.dataset.csrf;
+    const resumeAt = parseFloat(root.dataset.resume || "0") || 0;
     let player = null;
     let progressTimer = null;
+
+    // --- Watch-progress reporting (Udemy-style resume + completion) ---------
+    let completed = root.dataset.completed === "1";
+    let lastSavedPos = -1;
+    let saving = false;
+    let resumed = false;
+
+    // Persist the current position (and completion) to the server. Throttled by
+    // the caller; only fires when there's a real change to record.
+    function saveProgress(position, markComplete) {
+        if (!progressUrl || saving) return;
+        position = Math.max(0, Math.floor(position || 0));
+        const willComplete = markComplete && !completed;
+        if (!willComplete && Math.abs(position - lastSavedPos) < 5) return;
+        saving = true;
+        const body = new URLSearchParams({ position: String(position) });
+        if (willComplete) body.set("completed", "1");
+        fetch(progressUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "X-CSRFToken": csrf || "",
+                "X-Requested-With": "fetch",
+            },
+            body: body.toString(),
+        })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (data && data.completed) completed = true;
+                lastSavedPos = position;
+            })
+            .catch(() => {})
+            .finally(() => { saving = false; });
+    }
 
     // 1) Load the IFrame API script once.
     function loadApi() {
@@ -114,6 +151,7 @@
 
     function startProgress(ui) {
         clearInterval(progressTimer);
+        let tick = 0;
         progressTimer = setInterval(() => {
             if (!player || !player.getDuration) return;
             const d = player.getDuration();
@@ -121,6 +159,19 @@
             ui.dur.textContent = fmt(d);
             ui.cur.textContent = fmt(t);
             if (!ui.seeking && d > 0) ui.seek.value = (t / d) * 100;
+
+            // Report progress roughly every 10s of playback, and latch
+            // completion once ~90% (or the last 15s) has been watched.
+            const playing = player.getPlayerState &&
+                player.getPlayerState() === window.YT.PlayerState.PLAYING;
+            if (playing && d > 0) {
+                const nearEnd = t / d >= 0.9 || d - t <= 15;
+                if (nearEnd && !completed) {
+                    saveProgress(t, true);
+                } else if (++tick % 40 === 0) {  // 40 × 250ms ≈ 10s
+                    saveProgress(t, false);
+                }
+            }
         }, 250);
     }
 
@@ -146,13 +197,43 @@
                 },
                 events: {
                     onReady: () => startProgress(ui),
-                    onStateChange: (e) => reflectState(e.data, ui),
+                    onStateChange: (e) => {
+                        reflectState(e.data, ui);
+                        // Seek to the saved resume point the first time playback
+                        // starts (skip if already near the end / completed).
+                        if (e.data === window.YT.PlayerState.PLAYING && !resumed) {
+                            resumed = true;
+                            const d = player.getDuration();
+                            if (resumeAt > 3 && (!d || resumeAt < d - 15)) {
+                                player.seekTo(resumeAt, true);
+                            }
+                        }
+                        if (e.data === window.YT.PlayerState.PAUSED) {
+                            saveProgress(player.getCurrentTime(), false);
+                        }
+                        if (e.data === window.YT.PlayerState.ENDED) {
+                            saveProgress(player.getCurrentTime(), true);
+                        }
+                    },
                 },
             });
         } catch (err) {
             root.innerHTML = '<div class="loading">This video is unavailable.</div>';
         }
     }
+
+    // Best-effort save when the student navigates away mid-video.
+    window.addEventListener("pagehide", () => {
+        if (!progressUrl || !player || !player.getCurrentTime) return;
+        const t = Math.floor(player.getCurrentTime() || 0);
+        if (t <= 0 || Math.abs(t - lastSavedPos) < 5) return;
+        const body = new URLSearchParams({
+            position: String(t),
+            csrfmiddlewaretoken: csrf || "",
+        });
+        // sendBeacon survives the page unload where fetch would be cancelled.
+        if (navigator.sendBeacon) navigator.sendBeacon(progressUrl, body);
+    });
 
     init();
 })();

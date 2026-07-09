@@ -1,8 +1,18 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.utils.html import format_html
 
 from classroom.models import LiveClass
 
-from .models import Batch, BatchEnrollment, BatchScheduleSlot, Course, Lesson, Plan
+from .models import (
+    Batch,
+    BatchEnrollment,
+    BatchScheduleSlot,
+    Course,
+    Lesson,
+    LessonProgress,
+    Payment,
+    Plan,
+)
 
 
 @admin.register(Plan)
@@ -63,12 +73,20 @@ class CourseAdmin(admin.ModelAdmin):
 @admin.register(Batch)
 class BatchAdmin(admin.ModelAdmin):
     list_display = ("name", "course", "trainer", "student_count", "schedule_summary", "is_active")
-    list_filter = ("is_active", "course", "instructor")
+    list_filter = ("is_active", "is_self_paced", "course", "instructor")
     search_fields = ("name", "code", "course__title")
     prepopulated_fields = {"code": ("name",)}
     autocomplete_fields = ["course", "instructor"]
     fieldsets = (
         (None, {"fields": ("course", "name", "code", "instructor", "is_active")}),
+        (
+            "Format",
+            {
+                "fields": ("is_self_paced",),
+                "description": "Tick for a recorded, on-demand course (no live "
+                "schedule) students can buy into individually.",
+            },
+        ),
         ("Schedule", {"fields": ("start_date", "end_date")}),
         ("About", {"fields": ("description",)}),
     )
@@ -90,7 +108,84 @@ class LessonAdmin(admin.ModelAdmin):
 
 @admin.register(BatchEnrollment)
 class BatchEnrollmentAdmin(admin.ModelAdmin):
-    list_display = ("student", "batch", "plan", "enrolled_at", "is_active")
-    list_filter = ("batch", "plan", "is_active")
+    list_display = ("student", "batch", "plan", "enrolled_at", "is_active", "is_provisional")
+    list_filter = ("batch", "plan", "is_active", "is_provisional")
     search_fields = ("student__email", "student__first_name", "student__last_name", "batch__name")
     autocomplete_fields = ["student", "batch", "plan"]
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        "student", "student_phone", "student_email", "batch", "plan", "amount",
+        "method", "status", "has_proof", "created_at", "paid_at",
+    )
+    list_filter = ("status", "method", "batch", "plan")
+    search_fields = (
+        "student__email",
+        "student__first_name",
+        "student__last_name",
+        "student__phone",
+        "upi_reference",
+        "razorpay_order_id",
+        "razorpay_payment_id",
+    )
+    autocomplete_fields = ["student", "batch", "plan"]
+    readonly_fields = (
+        "student_phone", "student_email", "screenshot_preview", "created_at",
+        "paid_at", "razorpay_order_id", "razorpay_payment_id", "razorpay_signature",
+    )
+    date_hierarchy = "created_at"
+    actions = ["mark_paid_and_enroll"]
+    fieldsets = (
+        (None, {"fields": ("student", "student_phone", "student_email", "batch", "plan", "amount")}),
+        ("Status", {"fields": ("method", "status", "created_at", "paid_at")}),
+        ("Manual UPI proof", {"fields": ("upi_reference", "screenshot", "screenshot_preview")}),
+        ("Razorpay", {"fields": ("razorpay_order_id", "razorpay_payment_id", "razorpay_signature")}),
+        ("Notes", {"fields": ("note",)}),
+    )
+
+    @admin.display(description="Phone")
+    def student_phone(self, obj):
+        return obj.student.phone or "—"
+
+    @admin.display(description="Email")
+    def student_email(self, obj):
+        return obj.student.email
+
+    @admin.display(description="Proof", boolean=True)
+    def has_proof(self, obj):
+        return bool(obj.screenshot or obj.upi_reference)
+
+    @admin.display(description="Screenshot")
+    def screenshot_preview(self, obj):
+        if obj.screenshot:
+            return format_html(
+                '<a href="{0}" target="_blank"><img src="{0}" '
+                'style="max-width:340px; border-radius:8px;"></a>',
+                obj.screenshot.url,
+            )
+        return "—"
+
+    @admin.action(description="✓ Mark selected payments PAID and grant FULL course access")
+    def mark_paid_and_enroll(self, request, queryset):
+        """Verify a manual UPI payment: flip it to paid and give full access
+        (upgrading the student from provisional preview to the full course)."""
+        done = 0
+        for payment in queryset:
+            payment.mark_paid()
+            done += 1
+        self.message_user(
+            request,
+            f"{done} payment(s) marked paid — students now have full access to their course.",
+            messages.SUCCESS,
+        )
+
+
+@admin.register(LessonProgress)
+class LessonProgressAdmin(admin.ModelAdmin):
+    list_display = ("student", "lesson", "position_seconds", "completed", "updated_at")
+    list_filter = ("completed", "lesson__batch")
+    search_fields = ("student__email", "lesson__title")
+    autocomplete_fields = ["student", "lesson"]
+    readonly_fields = ("updated_at",)

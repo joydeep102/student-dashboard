@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.text import slugify
 
 
@@ -115,6 +116,11 @@ class Batch(models.Model):
     start_date = models.DateField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
     description = models.TextField(blank=True)
+    is_self_paced = models.BooleanField(
+        default=False,
+        help_text="A recorded, on-demand course (no live schedule). Students can "
+        "buy in individually and watch at their own pace, Udemy-style.",
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -218,6 +224,11 @@ class BatchEnrollment(models.Model):
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name="enrollments")
     enrolled_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+    is_provisional = models.BooleanField(
+        default=False,
+        help_text="Manual-UPI payment awaiting admin verification — the student "
+        "can preview only the first few lessons until it's approved.",
+    )
 
     class Meta:
         unique_together = ("student", "batch")
@@ -280,3 +291,145 @@ class Lesson(models.Model):
         m, s = divmod(self.duration_seconds, 60)
         h, m = divmod(m, 60)
         return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
+
+class LessonProgress(models.Model):
+    """How far a student has watched a recorded lesson (Udemy-style).
+
+    One row per (student, lesson). ``position_seconds`` is the resume point the
+    player seeks back to; ``completed`` flips true once the student has watched
+    most of the video (set by the player near the end).
+    """
+
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="lesson_progress",
+        limit_choices_to={"role": "student"},
+    )
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="progress")
+    position_seconds = models.PositiveIntegerField(default=0, help_text="Resume point.")
+    completed = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("student", "lesson")
+        ordering = ["-updated_at"]
+        verbose_name_plural = "Lesson progress"
+
+    def __str__(self):
+        state = "done" if self.completed else f"{self.position_seconds}s"
+        return f"{self.student} · {self.lesson.title} · {state}"
+
+
+class Payment(models.Model):
+    """A student's purchase of access to a batch on a specific plan.
+
+    Two routes both end at the same door — ``grant_access`` creates/activates the
+    student's :class:`BatchEnrollment`:
+
+    * ``manual_upi`` — student pays to the portal's UPI ID and submits the UTR /
+      reference; an admin verifies it and marks the payment paid.
+    * ``razorpay`` — online checkout; the success webhook verifies the signature
+      and marks the payment paid automatically.
+    """
+
+    class Status(models.TextChoices):
+        CREATED = "created", "Created"
+        PENDING = "pending", "Pending verification"  # manual UPI: ref submitted
+        PAID = "paid", "Paid"
+        FAILED = "failed", "Failed"
+
+    class Method(models.TextChoices):
+        MANUAL_UPI = "manual_upi", "Manual UPI"
+        RAZORPAY = "razorpay", "Razorpay"
+
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="payments",
+        limit_choices_to={"role": "student"},
+    )
+    batch = models.ForeignKey(Batch, on_delete=models.CASCADE, related_name="payments")
+    plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name="payments")
+    amount = models.DecimalField(max_digits=9, decimal_places=2)
+    method = models.CharField(max_length=20, choices=Method.choices)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.CREATED)
+
+    # Manual UPI: the transaction reference / UTR and/or a payment screenshot the
+    # student submits for an admin to verify.
+    upi_reference = models.CharField(max_length=60, blank=True)
+    screenshot = models.ImageField(upload_to="upi_screenshots/", blank=True, null=True)
+
+    # Razorpay identifiers (blank for manual payments).
+    razorpay_order_id = models.CharField(max_length=60, blank=True, db_index=True)
+    razorpay_payment_id = models.CharField(max_length=60, blank=True)
+    razorpay_signature = models.CharField(max_length=200, blank=True)
+
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.student} · {self.batch.name} · {self.plan.name} · {self.get_status_display()}"
+
+    def grant_access(self):
+        """Create or reactivate the student's FULL enrollment for this plan.
+
+        If the student already has an enrollment in the batch, keep the higher
+        of the two plan levels (so a purchase never downgrades an existing tier),
+        reactivate it, and clear any provisional (preview-only) flag. Returns the
+        enrollment.
+        """
+        enrollment, created = BatchEnrollment.objects.get_or_create(
+            student=self.student,
+            batch=self.batch,
+            defaults={"plan": self.plan, "is_active": True, "is_provisional": False},
+        )
+        if not created:
+            fields = ["is_active", "is_provisional"]
+            if self.plan.level > enrollment.plan.level:
+                enrollment.plan = self.plan
+                fields.append("plan")
+            enrollment.is_active = True
+            enrollment.is_provisional = False  # full access now
+            enrollment.save(update_fields=fields)
+        return enrollment
+
+    def grant_provisional_access(self):
+        """Give preview-only access (first few lessons) while a manual-UPI payment
+        awaits admin verification. Never touches an existing full enrollment.
+        """
+        enrollment = BatchEnrollment.objects.filter(
+            student=self.student, batch=self.batch
+        ).first()
+        if enrollment is not None:
+            # Already has full access — leave it alone (don't restrict a real tier).
+            if enrollment.is_active and not enrollment.is_provisional:
+                return enrollment
+            fields = ["is_active", "is_provisional"]
+            if self.plan.level > enrollment.plan.level:
+                enrollment.plan = self.plan
+                fields.append("plan")
+            enrollment.is_active = True
+            enrollment.is_provisional = True
+            enrollment.save(update_fields=fields)
+            return enrollment
+        return BatchEnrollment.objects.create(
+            student=self.student,
+            batch=self.batch,
+            plan=self.plan,
+            is_active=True,
+            is_provisional=True,
+        )
+
+    def mark_paid(self):
+        """Mark the payment paid and grant full course access (idempotent)."""
+        if self.status != self.Status.PAID:
+            self.status = self.Status.PAID
+            self.paid_at = timezone.now()
+            self.save(update_fields=["status", "paid_at"])
+        return self.grant_access()

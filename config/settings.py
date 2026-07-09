@@ -217,3 +217,25 @@ GOOGLE_LOGIN_ENABLED = bool(GOOGLE_LOGIN_CLIENT_ID and GOOGLE_LOGIN_CLIENT_SECRE
 # WhatsApp number (international format, no +) the pricing-page "upgrade" button
 # opens a chat with. Override per deployment via the WHATSAPP_PHONE env var.
 WHATSAPP_PHONE = os.environ.get("WHATSAPP_PHONE", "917029490341")
+
+# ---------------------------------------------------------------------------
+# Payments — recorded-course checkout (manual UPI + Razorpay)
+# ---------------------------------------------------------------------------
+# Manual UPI: students pay to this VPA (shown as a QR / intent link) and submit
+# the transaction reference for an admin to verify. UPI_PAYEE_NAME labels the
+# payee in the UPI app. Leave UPI_VPA blank to hide the manual-UPI option.
+UPI_VPA = os.environ.get("UPI_VPA", "")
+UPI_PAYEE_NAME = os.environ.get("UPI_PAYEE_NAME", "Fighter Bulls")
+
+# After a manual-UPI payment is submitted (but not yet verified by an admin), the
+# student gets preview access to this many lessons of the course. Full access is
+# granted when the admin approves the payment.
+PROVISIONAL_PREVIEW_LESSONS = int(os.environ.get("PROVISIONAL_PREVIEW_LESSONS", "2"))
+
+# Razorpay online checkout. Keys come from the Razorpay dashboard; the webhook
+# secret is set when you add the webhook. Online checkout is only offered when a
+# key id + secret are present, so the site works fine before the keys arrive.
+RAZORPAY_KEY_ID = os.environ.get("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.environ.get("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_WEBHOOK_SECRET = os.environ.get("RAZORPAY_WEBHOOK_SECRET", "")
+RAZORPAY_ENABLED = bool(RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)

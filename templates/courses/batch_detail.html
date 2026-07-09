@@ -19,11 +19,23 @@
         </div>
         <div class="hero-chips">
             <span class="plan-chip plan-{{ enrollment.plan.accent }}">⭐ {{ enrollment.plan.name }} plan</span>
+            {% if batch.is_self_paced %}
+            <a class="plan-chip ghost" href="{% url 'courses:checkout' batch.code %}">⤴ Upgrade plan</a>
+            {% else %}
             <a class="plan-chip ghost" href="{% url 'courses:pricing' %}">⤴ Upgrade plan</a>
+            {% endif %}
         </div>
     </div>
     <div class="dash-hero-art"><span class="hero-bull">📈</span></div>
 </section>
+
+{% if is_provisional %}
+<div class="alert alert-warning" style="margin:16px 0;">
+    ⏳ <strong>Payment under verification.</strong> You have preview access to the first
+    {{ preview_count }} lesson{{ preview_count|pluralize }}. The full course unlocks once an admin
+    confirms your UPI payment.
+</div>
+{% endif %}
 
 {% if batch.description %}<p class="batch-desc">{{ batch.description }}</p>{% endif %}
 
@@ -89,7 +101,11 @@
         <div class="lc-info">
             <div class="lc-title">{{ l.obj.title }}</div>
             <div class="lc-sub">Requires {{ l.obj.required_plan.name }}</div>
+            {% if batch.is_self_paced %}
+            <a class="btn btn-ghost btn-sm lc-upgrade" href="{% url 'courses:checkout' batch.code %}?plan={{ l.obj.required_plan.slug }}">🔒 Upgrade to unlock</a>
+            {% else %}
             <a class="btn btn-ghost btn-sm lc-upgrade" href="{% url 'courses:pricing' %}">🔒 Upgrade to unlock</a>
+            {% endif %}
         </div>
     </div>
     {% endif %}

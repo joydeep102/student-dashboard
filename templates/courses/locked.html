@@ -9,7 +9,11 @@
     <p class="subtitle">You're in {{ batch.name }} on a lower plan, so this content is locked.
         Upgrade your plan to continue with the batch.</p>
     <div style="margin-top:16px; display:flex; gap:10px; justify-content:center;">
+        {% if batch.is_self_paced and item.required_plan %}
+        <a class="btn" href="{% url 'courses:checkout' batch.code %}?plan={{ item.required_plan.slug }}">Upgrade to {{ item.required_plan.name }} →</a>
+        {% else %}
         <a class="btn" href="{% url 'courses:pricing' %}">View plans &amp; upgrade</a>
+        {% endif %}
         <a class="btn btn-ghost" href="{{ batch.get_absolute_url }}">Back to batch</a>
     </div>
 </div>
