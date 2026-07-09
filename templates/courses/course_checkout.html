@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Checkout — {{ course.title }}{% endblock %}
+
+{% block content %}
+<div style="max-width:560px; margin:0 auto;">
+    <a href="{% url 'courses:course' course.slug %}" class="card-meta">← Back to course</a>
+    <h1 style="margin-top:6px;">{{ course.title }}</h1>
+
+    <div class="card" style="margin:16px 0;">
+        <div class="card-meta">Amount to pay</div>
+        <div style="font-size:1.8rem; font-weight:700;">₹{{ amount }}</div>
+    </div>
+
+    {% if razorpay_enabled %}
+    <div class="card" style="margin-bottom:16px;">
+        <h3 style="margin-top:0;">Pay online</h3>
+        <p style="color:var(--muted);">UPI, cards, netbanking & wallets. Access unlocks instantly.</p>
+        <button id="rzp-btn" class="btn btn-block"
+                data-order-url="{% url 'courses:course_razorpay_order' course.slug %}"
+                data-verify-url="{% url 'courses:course_razorpay_verify' course.slug %}"
+                data-plan=""
+                data-csrf="{{ csrf_token }}">Pay ₹{{ amount }} online →</button>
+        <p id="rzp-msg" class="card-meta" style="margin-top:10px;"></p>
+    </div>
+    {% endif %}
+
+    {% if upi %}
+    <div class="card">
+        <h3 style="margin-top:0;">Pay by UPI</h3>
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:6px 0 4px;">
+            <a class="btn btn-ghost btn-block" href="{{ upi.links.gpay }}">Pay with GPay</a>
+            <a class="btn btn-ghost btn-block" href="{{ upi.links.phonepe }}">Pay with PhonePe</a>
+            <a class="btn btn-ghost btn-block" href="{{ upi.links.paytm }}">Pay with Paytm</a>
+            <a class="btn btn-ghost btn-block" href="{{ upi.links.generic }}">Any UPI app</a>
+        </div>
+        <p class="card-meta" style="margin:8px 0 0;">Buttons above open your UPI app on a phone.</p>
+
+        <div style="text-align:center; margin:16px 0 6px;">
+            <div class="card-meta" style="margin-bottom:8px;">…or scan with any UPI app</div>
+            <img src="{{ upi.qr }}" alt="UPI QR code"
+                 style="width:200px; height:200px; border-radius:12px; background:#fff; padding:8px;">
+        </div>
+
+        <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;">
+
+        <p style="color:var(--muted);">
+            After paying <strong>₹{{ amount }}</strong>, share proof so we can verify it —
+            your <strong>transaction / UTR number</strong> or a <strong>payment screenshot</strong> (either is fine).
+        </p>
+        <form method="post" action="{% url 'courses:course_upi_submit' course.slug %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <label class="card-meta" for="upi_reference">UPI transaction / UTR number</label>
+            <input type="text" id="upi_reference" name="upi_reference"
+                   placeholder="e.g. 405122334455"
+                   style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">
+            <label class="card-meta" for="screenshot">Payment screenshot</label>
+            <input type="file" id="screenshot" name="screenshot" accept="image/*"
+                   style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">
+            <button type="submit" class="btn btn-block">I've paid — submit for verification</button>
+        </form>
+        <p class="card-meta" style="margin-top:12px;">
+            🎬 You'll get the first {{ preview_count }} lecture{{ preview_count|pluralize }} right away.
+            The full course unlocks once an admin verifies your payment.
+        </p>
+    </div>
+    {% endif %}
+
+    {% if not upi and not razorpay_enabled %}
+    <div class="empty"><p>Online payment isn't set up yet. Please contact the admin to enroll.</p></div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block body_extra %}
+{% if razorpay_enabled %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script src="{% static 'js/checkout.js' %}"></script>
+{% endif %}
+{% endblock %}

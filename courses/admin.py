@@ -8,10 +8,16 @@ from .models import (
     BatchEnrollment,
     BatchScheduleSlot,
     Course,
+    CourseEnrollment,
+    CoursePayment,
+    Lecture,
+    LectureProgress,
     Lesson,
     LessonProgress,
     Payment,
     Plan,
+    RecordedCourse,
+    Section,
 )
 
 
@@ -189,3 +195,121 @@ class LessonProgressAdmin(admin.ModelAdmin):
     search_fields = ("student__email", "lesson__title")
     autocomplete_fields = ["student", "lesson"]
     readonly_fields = ("updated_at",)
+
+
+# ---------------------------------------------------------------------------
+# Udemy-style recorded courses
+# ---------------------------------------------------------------------------
+class SectionInline(admin.TabularInline):
+    model = Section
+    extra = 1
+    fields = ("title", "order")
+
+
+class LectureInline(admin.StackedInline):
+    model = Lecture
+    extra = 1
+    fields = ("title", "youtube_id", "duration_seconds", "is_preview", "order", "description")
+
+
+@admin.register(RecordedCourse)
+class RecordedCourseAdmin(admin.ModelAdmin):
+    list_display = ("title", "instructor", "price", "lecture_count", "is_published", "updated_at")
+    list_filter = ("is_published", "instructor")
+    search_fields = ("title", "subtitle", "description")
+    prepopulated_fields = {"slug": ("title",)}
+    autocomplete_fields = ["instructor"]
+    inlines = [SectionInline]
+
+
+@admin.register(Section)
+class SectionAdmin(admin.ModelAdmin):
+    list_display = ("title", "course", "order")
+    list_filter = ("course",)
+    search_fields = ("title", "course__title")
+    inlines = [LectureInline]
+
+
+@admin.register(Lecture)
+class LectureAdmin(admin.ModelAdmin):
+    list_display = ("title", "section", "is_preview", "order", "duration_display")
+    list_filter = ("is_preview", "section__course")
+    search_fields = ("title", "section__title", "section__course__title")
+
+
+@admin.register(CourseEnrollment)
+class CourseEnrollmentAdmin(admin.ModelAdmin):
+    list_display = ("student", "course", "enrolled_at", "is_active", "is_provisional")
+    list_filter = ("is_active", "is_provisional", "course")
+    search_fields = ("student__email", "student__first_name", "student__last_name", "course__title")
+    autocomplete_fields = ["student", "course"]
+
+
+@admin.register(LectureProgress)
+class LectureProgressAdmin(admin.ModelAdmin):
+    list_display = ("student", "lecture", "position_seconds", "completed", "updated_at")
+    list_filter = ("completed", "lecture__section__course")
+    search_fields = ("student__email", "lecture__title")
+    autocomplete_fields = ["student", "lecture"]
+    readonly_fields = ("updated_at",)
+
+
+@admin.register(CoursePayment)
+class CoursePaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        "student", "student_phone", "student_email", "course", "amount",
+        "method", "status", "has_proof", "created_at", "paid_at",
+    )
+    list_filter = ("status", "method", "course")
+    search_fields = (
+        "student__email", "student__first_name", "student__last_name",
+        "student__phone", "upi_reference", "razorpay_order_id", "razorpay_payment_id",
+    )
+    autocomplete_fields = ["student", "course"]
+    readonly_fields = (
+        "student_phone", "student_email", "screenshot_preview", "created_at",
+        "paid_at", "razorpay_order_id", "razorpay_payment_id", "razorpay_signature",
+    )
+    date_hierarchy = "created_at"
+    actions = ["mark_paid_and_enroll"]
+    fieldsets = (
+        (None, {"fields": ("student", "student_phone", "student_email", "course", "amount")}),
+        ("Status", {"fields": ("method", "status", "created_at", "paid_at")}),
+        ("Manual UPI proof", {"fields": ("upi_reference", "screenshot", "screenshot_preview")}),
+        ("Razorpay", {"fields": ("razorpay_order_id", "razorpay_payment_id", "razorpay_signature")}),
+        ("Notes", {"fields": ("note",)}),
+    )
+
+    @admin.display(description="Phone")
+    def student_phone(self, obj):
+        return obj.student.phone or "—"
+
+    @admin.display(description="Email")
+    def student_email(self, obj):
+        return obj.student.email
+
+    @admin.display(description="Proof", boolean=True)
+    def has_proof(self, obj):
+        return bool(obj.screenshot or obj.upi_reference)
+
+    @admin.display(description="Screenshot")
+    def screenshot_preview(self, obj):
+        if obj.screenshot:
+            return format_html(
+                '<a href="{0}" target="_blank"><img src="{0}" '
+                'style="max-width:340px; border-radius:8px;"></a>',
+                obj.screenshot.url,
+            )
+        return "—"
+
+    @admin.action(description="✓ Mark selected payments PAID and grant FULL course access")
+    def mark_paid_and_enroll(self, request, queryset):
+        done = 0
+        for payment in queryset:
+            payment.mark_paid()
+            done += 1
+        self.message_user(
+            request,
+            f"{done} payment(s) marked paid — students now have full course access.",
+            messages.SUCCESS,
+        )

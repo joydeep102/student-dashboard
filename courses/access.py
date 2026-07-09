@@ -13,7 +13,7 @@ the payment the enrollment becomes full and the whole plan unlocks.
 
 from django.conf import settings
 
-from .models import BatchEnrollment, Lesson
+from .models import BatchEnrollment, CourseEnrollment, Lesson
 
 
 def preview_count():
@@ -71,3 +71,42 @@ def can_access(enrollment, content):
     # provisional preview count is computed consistently everywhere.
     lessons = list(content.batch.lessons.all())
     return content.id in unlocked_lesson_ids(enrollment, lessons)
+
+
+# ---------------------------------------------------------------------------
+# Recorded-course (Udemy-style) lecture access
+# ---------------------------------------------------------------------------
+def get_course_enrollment(user, course):
+    """Return the student's active enrollment in ``course`` (or None)."""
+    if not user.is_authenticated:
+        return None
+    return CourseEnrollment.objects.filter(
+        student=user, course=course, is_active=True
+    ).first()
+
+
+def unlocked_lecture_ids(enrollment, ordered_lectures):
+    """Ids among ``ordered_lectures`` (curriculum order) the viewer may watch.
+
+    * Preview lectures are always watchable (free samples, even logged-out).
+    * A full enrollment unlocks everything.
+    * A provisional enrollment (manual-UPI awaiting verification) unlocks only
+      the first ``preview_count()`` lectures.
+    """
+    ids = {lec.id for lec in ordered_lectures if lec.is_preview}
+    if enrollment is None or not enrollment.is_active:
+        return ids
+    if not enrollment.is_provisional:
+        ids.update(lec.id for lec in ordered_lectures)
+        return ids
+    for lec in ordered_lectures[: preview_count()]:
+        ids.add(lec.id)
+    return ids
+
+
+def can_watch_lecture(user, lecture, enrollment):
+    """True if the viewer may watch ``lecture`` right now."""
+    if lecture.is_preview:
+        return True
+    ordered = lecture.section.course.ordered_lectures()
+    return lecture.id in unlocked_lecture_ids(enrollment, ordered)

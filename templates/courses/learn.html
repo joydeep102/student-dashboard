@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ lecture.title }} — {{ course.title }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+    <a href="{% url 'courses:course' course.slug %}" class="card-meta">← {{ course.title }}</a>
+    <h1 style="margin-top:6px;">{{ lecture.title }}</h1>
+</div>
+
+<div class="player-layout">
+    <div>
+        <div class="vplayer" id="vplayer"
+             data-source-url="{% url 'courses:lecture_source' course.slug lecture.pk %}"
+             data-progress-url="{% url 'courses:lecture_progress' course.slug lecture.pk %}"
+             data-resume="{{ resume_position }}"
+             data-completed="{{ is_completed|yesno:'1,0' }}"
+             data-csrf="{{ csrf_token }}">
+            <div class="loading">Loading player…</div>
+        </div>
+
+        {% if lecture.description %}
+        <p style="color:var(--muted); margin-top:16px;">{{ lecture.description|linebreaksbr }}</p>
+        {% endif %}
+
+        <div class="lesson-nav">
+            {% if prev_lecture %}
+            <a class="btn btn-ghost btn-sm" href="{% url 'courses:learn' course.slug prev_lecture.pk %}">← Previous</a>
+            {% else %}<span></span>{% endif %}
+            {% if next_lecture %}
+            <a class="btn btn-sm" href="{% url 'courses:learn' course.slug next_lecture.pk %}">Next →</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <aside class="playlist">
+        <h3>Course content</h3>
+        {% for s in sections %}
+        <div style="font-weight:600; margin:14px 0 6px;">{{ s.obj.title }}</div>
+        {% for l in s.lectures %}
+        {% if l.unlocked %}
+        <a class="playlist-item {% if l.obj.pk == lecture.pk %}active{% endif %} {% if l.completed %}done{% endif %}"
+           href="{% url 'courses:learn' course.slug l.obj.pk %}">
+            <div class="num">{% if l.completed %}✓{% elif l.preview %}▶{% else %}{{ forloop.counter }}{% endif %}</div>
+            <div>
+                <div class="pl-title">{{ l.obj.title }}</div>
+                <div class="pl-meta">{% if l.preview %}Preview · {% endif %}{{ l.obj.duration_display }}{% if l.completed %} · Completed{% endif %}</div>
+            </div>
+        </a>
+        {% else %}
+        <div class="playlist-item locked">
+            <div class="num">🔒</div>
+            <div>
+                <div class="pl-title">{{ l.obj.title }}</div>
+                <div class="pl-meta">{{ l.obj.duration_display }}</div>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% endfor %}
+    </aside>
+</div>
+{% endblock %}
+
+{% block body_extra %}
+<script src="{% static 'js/player.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}My Courses — Course Studio{% endblock %}
+
+{% block content %}
+<div style="max-width:820px; margin:0 auto;">
+    <h1>My Courses</h1>
+    <p style="color:var(--muted);">Build and publish your recorded courses.</p>
+
+    <div class="card" style="margin:16px 0;">
+        <form method="post" action="{% url 'trainers:course_create' %}"
+              style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+            {% csrf_token %}
+            <div style="flex:1; min-width:220px;">
+                <label class="card-meta" for="title">New course title</label>
+                <input id="title" name="title" required placeholder="e.g. Options Trading Masterclass"
+                       style="width:100%; padding:10px; margin-top:6px; border:1px solid var(--border); border-radius:8px;">
+            </div>
+            <button type="submit" class="btn">+ Create course</button>
+        </form>
+    </div>
+
+    {% for course in courses %}
+    <div class="card" style="margin-bottom:12px; display:flex; align-items:center; gap:14px;">
+        {% if course.thumbnail %}
+        <img src="{{ course.thumbnail.url }}" alt="" style="width:96px; height:54px; object-fit:cover; border-radius:8px;">
+        {% endif %}
+        <div style="flex:1;">
+            <div style="font-weight:600;">{{ course.title }}</div>
+            <div class="card-meta">
+                ₹{{ course.price }} · {{ course.lecture_count }} lecture{{ course.lecture_count|pluralize }}
+                {% if course.is_published %}· <span style="color:var(--success,#16a34a);">● Published</span>
+                {% else %}· <span style="color:var(--muted);">○ Draft</span>{% endif %}
+            </div>
+        </div>
+        <a class="btn btn-sm" href="{% url 'trainers:course_edit' course.slug %}">Edit</a>
+    </div>
+    {% empty %}
+    <div class="empty">You haven't created any courses yet. Add one above to get started.</div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -433,3 +433,271 @@ class Payment(models.Model):
             self.paid_at = timezone.now()
             self.save(update_fields=["status", "paid_at"])
         return self.grant_access()
+
+
+# ===========================================================================
+# Udemy-style recorded courses
+#
+# A standalone, self-paced video course owned and designed by an instructor —
+# bought once for full lifetime access (no cohort/batch, no plan tiers). Content
+# is a curriculum of Sections, each holding ordered Lectures.
+# ===========================================================================
+
+
+class RecordedCourse(models.Model):
+    """A standalone on-demand video course (Udemy-style)."""
+
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=220, unique=True, blank=True)
+    subtitle = models.CharField(max_length=300, blank=True, help_text="Short one-line pitch.")
+    description = models.TextField(blank=True)
+    thumbnail = models.ImageField(upload_to="course_thumbs/", blank=True, null=True)
+    instructor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_courses",
+        limit_choices_to={"role__in": ["instructor", "admin"]},
+        help_text="The instructor who owns and designs this course.",
+    )
+    price = models.DecimalField(max_digits=9, decimal_places=2, default=0)
+    is_published = models.BooleanField(
+        default=False, help_text="Published courses appear in the public catalog."
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.title) or "course"
+            slug, i = base, 2
+            while RecordedCourse.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base}-{i}"
+                i += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse("courses:course", kwargs={"slug": self.slug})
+
+    def ordered_lectures(self):
+        """All lectures in curriculum order (section order, then lecture order)."""
+        lectures = []
+        for section in self.sections.prefetch_related("lectures").all():
+            lectures.extend(section.lectures.all())
+        return lectures
+
+    @property
+    def lecture_count(self):
+        return Lecture.objects.filter(section__course=self).count()
+
+    @property
+    def total_seconds(self):
+        return (
+            Lecture.objects.filter(section__course=self).aggregate(
+                s=models.Sum("duration_seconds")
+            )["s"]
+            or 0
+        )
+
+    @property
+    def duration_display(self):
+        secs = self.total_seconds
+        if not secs:
+            return ""
+        m = secs // 60
+        h, m = divmod(m, 60)
+        return f"{h}h {m}m" if h else f"{m}m"
+
+
+class Section(models.Model):
+    """A curriculum section/chapter grouping lectures within a course."""
+
+    course = models.ForeignKey(RecordedCourse, on_delete=models.CASCADE, related_name="sections")
+    title = models.CharField(max_length=200)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.course.title} — {self.title}"
+
+
+class Lecture(models.Model):
+    """A single video lecture inside a section.
+
+    Video is an *unlisted* YouTube id played through the branded in-portal
+    player. ``is_preview`` lectures are free to watch for anyone (the Udemy
+    "preview" sample); all others need an active enrollment.
+    """
+
+    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name="lectures")
+    title = models.CharField(max_length=200)
+    youtube_id = models.CharField(
+        max_length=20,
+        help_text="The 11-character YouTube video id of the UNLISTED upload.",
+    )
+    duration_seconds = models.PositiveIntegerField(default=0, help_text="Optional, for display.")
+    is_preview = models.BooleanField(
+        default=False, help_text="Free preview — anyone can watch without buying."
+    )
+    order = models.PositiveIntegerField(default=0)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.section.title} — {self.title}"
+
+    @property
+    def course(self):
+        return self.section.course
+
+    def get_absolute_url(self):
+        return reverse(
+            "courses:learn", kwargs={"slug": self.section.course.slug, "pk": self.pk}
+        )
+
+    @property
+    def duration_display(self):
+        if not self.duration_seconds:
+            return ""
+        m, s = divmod(self.duration_seconds, 60)
+        h, m = divmod(m, 60)
+        return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+
+
+class CourseEnrollment(models.Model):
+    """A student's purchased access to a recorded course (full, lifetime)."""
+
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="course_enrollments",
+        limit_choices_to={"role": "student"},
+    )
+    course = models.ForeignKey(RecordedCourse, on_delete=models.CASCADE, related_name="enrollments")
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    is_provisional = models.BooleanField(
+        default=False,
+        help_text="Manual-UPI payment awaiting verification — preview access only.",
+    )
+
+    class Meta:
+        unique_together = ("student", "course")
+        ordering = ["-enrolled_at"]
+
+    def __str__(self):
+        return f"{self.student} · {self.course.title}"
+
+
+class LectureProgress(models.Model):
+    """How far a student has watched a lecture (resume + completion)."""
+
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="lecture_progress",
+        limit_choices_to={"role": "student"},
+    )
+    lecture = models.ForeignKey(Lecture, on_delete=models.CASCADE, related_name="progress")
+    position_seconds = models.PositiveIntegerField(default=0)
+    completed = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("student", "lecture")
+        ordering = ["-updated_at"]
+        verbose_name_plural = "Lecture progress"
+
+    def __str__(self):
+        state = "done" if self.completed else f"{self.position_seconds}s"
+        return f"{self.student} · {self.lecture.title} · {state}"
+
+
+class CoursePayment(models.Model):
+    """A student's purchase of a recorded course (manual UPI or Razorpay).
+
+    Both routes end at ``grant_access`` which creates/activates the student's
+    :class:`CourseEnrollment`.
+    """
+
+    class Status(models.TextChoices):
+        CREATED = "created", "Created"
+        PENDING = "pending", "Pending verification"
+        PAID = "paid", "Paid"
+        FAILED = "failed", "Failed"
+
+    class Method(models.TextChoices):
+        MANUAL_UPI = "manual_upi", "Manual UPI"
+        RAZORPAY = "razorpay", "Razorpay"
+
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="course_payments",
+        limit_choices_to={"role": "student"},
+    )
+    course = models.ForeignKey(RecordedCourse, on_delete=models.CASCADE, related_name="payments")
+    amount = models.DecimalField(max_digits=9, decimal_places=2)
+    method = models.CharField(max_length=20, choices=Method.choices)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.CREATED)
+
+    upi_reference = models.CharField(max_length=60, blank=True)
+    screenshot = models.ImageField(upload_to="upi_screenshots/", blank=True, null=True)
+
+    razorpay_order_id = models.CharField(max_length=60, blank=True, db_index=True)
+    razorpay_payment_id = models.CharField(max_length=60, blank=True)
+    razorpay_signature = models.CharField(max_length=200, blank=True)
+
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.student} · {self.course.title} · {self.get_status_display()}"
+
+    def grant_access(self):
+        """Create or activate the student's FULL enrollment (clears provisional)."""
+        enrollment, created = CourseEnrollment.objects.get_or_create(
+            student=self.student,
+            course=self.course,
+            defaults={"is_active": True, "is_provisional": False},
+        )
+        if not created and (not enrollment.is_active or enrollment.is_provisional):
+            enrollment.is_active = True
+            enrollment.is_provisional = False
+            enrollment.save(update_fields=["is_active", "is_provisional"])
+        return enrollment
+
+    def grant_provisional_access(self):
+        """Give preview-only access while a manual-UPI payment awaits verification."""
+        enrollment, created = CourseEnrollment.objects.get_or_create(
+            student=self.student,
+            course=self.course,
+            defaults={"is_active": True, "is_provisional": True},
+        )
+        # Never downgrade an already-full enrollment.
+        return enrollment
+
+    def mark_paid(self):
+        """Mark paid and grant full course access (idempotent)."""
+        if self.status != self.Status.PAID:
+            self.status = self.Status.PAID
+            self.paid_at = timezone.now()
+            self.save(update_fields=["status", "paid_at"])
+        return self.grant_access()

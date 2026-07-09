@@ -16,8 +16,23 @@ from django.views.decorators.http import require_POST
 from classroom.models import LiveClass
 
 from . import razorpay_api
-from .access import can_access, get_enrollment, preview_count, unlocked_lesson_ids
-from .models import Batch, BatchEnrollment, Lesson, LessonProgress, Payment, Plan
+from .access import (
+    can_access,
+    get_enrollment,
+    preview_count,
+    unlocked_lecture_ids,
+    unlocked_lesson_ids,
+)
+from .models import (
+    Batch,
+    BatchEnrollment,
+    CourseEnrollment,
+    LectureProgress,
+    Lesson,
+    LessonProgress,
+    Payment,
+    Plan,
+)
 
 
 @login_required
@@ -130,12 +145,46 @@ def dashboard(request):
             if t.is_open_to(plan_by_batch.get(t.live_class.batch_id)) and t.id not in submitted
         ]
 
+    # Enrolled recorded (Udemy-style) courses with real watch progress.
+    course_cards = []
+    course_enrollments = list(
+        CourseEnrollment.objects.filter(student=request.user, is_active=True).select_related(
+            "course"
+        )
+    )
+    if course_enrollments:
+        done_lectures = set(
+            LectureProgress.objects.filter(student=request.user, completed=True).values_list(
+                "lecture_id", flat=True
+            )
+        )
+        for ce in course_enrollments:
+            ordered = ce.course.ordered_lectures()
+            unlocked = unlocked_lecture_ids(ce, ordered)
+            accessible = [lec for lec in ordered if lec.id in unlocked]
+            total = len(accessible)
+            done = sum(1 for lec in accessible if lec.id in done_lectures)
+            resume = next((lec for lec in accessible if lec.id not in done_lectures), None)
+            if resume is None and accessible:
+                resume = accessible[0]
+            course_cards.append(
+                {
+                    "course": ce.course,
+                    "completed": done,
+                    "total": total,
+                    "pct": round(done / total * 100) if total else 0,
+                    "provisional": ce.is_provisional,
+                    "resume": resume,
+                }
+            )
+
     return render(
         request,
         "courses/dashboard.html",
         {
             "enrollments": enrollments,
             "batch_cards": batch_cards,
+            "course_cards": course_cards,
             "upcoming": upcoming,
             "next_class": next_class,
             "continue_lesson": continue_lesson,
@@ -220,7 +269,7 @@ def _course_landing(request, batch):
     lessons = list(batch.lessons.select_related("required_plan").all())
     return render(
         request,
-        "courses/course_landing.html",
+        "courses/batch_landing.html",
         {
             "batch": batch,
             "lessons": lessons,

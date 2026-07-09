@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ course.title }} — Course Studio{% endblock %}
+
+{% block content %}
+<div style="max-width:820px; margin:0 auto;">
+    <a href="{% url 'trainers:courses' %}" class="card-meta">← My Courses</a>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:6px;">
+        <h1 style="margin:0;">{{ course.title }}</h1>
+        <span class="card-meta">
+            {% if course.is_published %}● Published{% else %}○ Draft{% endif %}
+        </span>
+    </div>
+
+    <!-- Course details -->
+    <div class="card" style="margin:16px 0;">
+        <h3 style="margin-top:0;">Course details</h3>
+        <form method="post" action="{% url 'trainers:course_edit' course.slug %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <label class="card-meta" for="title">Title</label>
+            <input id="title" name="title" value="{{ course.title }}" required
+                   style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">
+            <label class="card-meta" for="subtitle">Subtitle</label>
+            <input id="subtitle" name="subtitle" value="{{ course.subtitle }}"
+                   style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">
+            <label class="card-meta" for="description">Description</label>
+            <textarea id="description" name="description" rows="4"
+                      style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">{{ course.description }}</textarea>
+            <div style="display:flex; gap:14px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:140px;">
+                    <label class="card-meta" for="price">Price (₹)</label>
+                    <input id="price" name="price" type="number" min="0" value="{{ course.price|floatformat:0 }}"
+                           style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">
+                </div>
+                <div style="flex:1; min-width:200px;">
+                    <label class="card-meta" for="thumbnail">Thumbnail</label>
+                    <input id="thumbnail" name="thumbnail" type="file" accept="image/*"
+                           style="width:100%; padding:8px 0; margin:6px 0 12px;">
+                </div>
+            </div>
+            <button type="submit" class="btn">Save details</button>
+        </form>
+        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+            <form method="post" action="{% url 'trainers:course_publish' course.slug %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm">{% if course.is_published %}Unpublish{% else %}Publish{% endif %}</button>
+            </form>
+            <a class="btn btn-ghost btn-sm" href="{% url 'courses:course' course.slug %}">View public page ↗</a>
+            <form method="post" action="{% url 'trainers:course_delete' course.slug %}"
+                  onsubmit="return confirm('Delete this course and all its content?');" style="margin-left:auto;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--danger,#dc2626);">Delete course</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Curriculum -->
+    <h3>Curriculum</h3>
+    {% for section in sections %}
+    <div class="card" style="margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <form method="post" action="{% url 'trainers:section_edit' course.slug section.pk %}" style="flex:1; display:flex; gap:8px;">
+                {% csrf_token %}
+                <input name="title" value="{{ section.title }}"
+                       style="flex:1; padding:8px; border:1px solid var(--border); border-radius:8px; font-weight:600;">
+                <button type="submit" class="btn btn-ghost btn-sm">Rename</button>
+            </form>
+            <form method="post" action="{% url 'trainers:section_delete' course.slug section.pk %}"
+                  onsubmit="return confirm('Delete this section and its lectures?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--danger,#dc2626);">✕</button>
+            </form>
+        </div>
+
+        <!-- Lectures in this section -->
+        <div style="margin:12px 0;">
+            {% for lec in section.lectures.all %}
+            <details style="border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-bottom:8px;">
+                <summary style="cursor:pointer;">
+                    {{ forloop.counter }}. {{ lec.title }}
+                    {% if lec.is_preview %}<span class="card-meta">· preview</span>{% endif %}
+                    {% if lec.duration_display %}<span class="card-meta">· {{ lec.duration_display }}</span>{% endif %}
+                </summary>
+                <form method="post" action="{% url 'trainers:lecture_edit' course.slug lec.pk %}" style="margin-top:10px;">
+                    {% csrf_token %}
+                    <label class="card-meta">Title</label>
+                    <input name="title" value="{{ lec.title }}" required
+                           style="width:100%; padding:8px; margin:4px 0 10px; border:1px solid var(--border); border-radius:8px;">
+                    <label class="card-meta">YouTube video id (unlisted)</label>
+                    <input name="youtube_id" value="{{ lec.youtube_id }}" required
+                           style="width:100%; padding:8px; margin:4px 0 10px; border:1px solid var(--border); border-radius:8px;">
+                    <label class="card-meta">Length (minutes)</label>
+                    <input name="duration_min" type="number" min="0" step="0.1" value="{{ lec.duration_seconds|floatformat:0|default:0 }}"
+                           style="width:100%; padding:8px; margin:4px 0 10px; border:1px solid var(--border); border-radius:8px;">
+                    <label style="display:block; margin:4px 0 10px;">
+                        <input type="checkbox" name="is_preview" {% if lec.is_preview %}checked{% endif %}> Free preview
+                    </label>
+                    <button type="submit" class="btn btn-sm">Save</button>
+                </form>
+                <form method="post" action="{% url 'trainers:lecture_delete' course.slug lec.pk %}"
+                      onsubmit="return confirm('Delete this lecture?');" style="margin-top:8px;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--danger,#dc2626);">Delete lecture</button>
+                </form>
+            </details>
+            {% empty %}
+            <p class="card-meta">No lectures yet — add one below.</p>
+            {% endfor %}
+        </div>
+
+        <!-- Add lecture -->
+        <details style="margin-top:8px;">
+            <summary style="cursor:pointer; color:var(--accent,#16a34a);">+ Add lecture</summary>
+            <form method="post" action="{% url 'trainers:lecture_add' course.slug section.pk %}" style="margin-top:10px;">
+                {% csrf_token %}
+                <input name="title" placeholder="Lecture title" required
+                       style="width:100%; padding:8px; margin:4px 0 8px; border:1px solid var(--border); border-radius:8px;">
+                <input name="youtube_id" placeholder="Unlisted YouTube video id (e.g. dQw4w9WgXcQ)" required
+                       style="width:100%; padding:8px; margin:4px 0 8px; border:1px solid var(--border); border-radius:8px;">
+                <input name="duration_min" type="number" min="0" step="0.1" placeholder="Length in minutes"
+                       style="width:100%; padding:8px; margin:4px 0 8px; border:1px solid var(--border); border-radius:8px;">
+                <label style="display:block; margin:4px 0 8px;">
+                    <input type="checkbox" name="is_preview"> Free preview (anyone can watch)
+                </label>
+                <button type="submit" class="btn btn-sm">Add lecture</button>
+            </form>
+        </details>
+    </div>
+    {% empty %}
+    <div class="empty">No sections yet. Add your first section below.</div>
+    {% endfor %}
+
+    <!-- Add section -->
+    <div class="card" style="margin-top:12px;">
+        <form method="post" action="{% url 'trainers:section_add' course.slug %}"
+              style="display:flex; gap:10px; align-items:end;">
+            {% csrf_token %}
+            <div style="flex:1;">
+                <label class="card-meta" for="sec-title">New section title</label>
+                <input id="sec-title" name="title" required placeholder="e.g. Getting Started"
+                       style="width:100%; padding:10px; margin-top:6px; border:1px solid var(--border); border-radius:8px;">
+            </div>
+            <button type="submit" class="btn">+ Add section</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

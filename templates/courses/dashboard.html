@@ -124,8 +124,31 @@
         {% endif %}
     </div>
 
-    <!-- Side column: batches -->
+    <!-- Side column: courses + batches -->
     <aside class="dash-side">
+        {% if course_cards %}
+        <div class="sec-head"><h2>My courses</h2><a class="sec-count" href="{% url 'courses:catalog' %}">Browse all</a></div>
+        <div class="batch-stack" style="margin-bottom:22px;">
+            {% for c in course_cards %}
+            <a class="batch-card animate-up" href="{% if c.resume %}{% url 'courses:learn' c.course.slug c.resume.pk %}{% else %}{{ c.course.get_absolute_url }}{% endif %}">
+                <div class="bc-banner plan-green">
+                    <span class="bc-plan">Course</span>
+                    <span class="bc-emoji">🎬</span>
+                </div>
+                <div class="bc-body">
+                    <div class="bc-name">{{ c.course.title }}</div>
+                    {% if c.course.instructor %}<div class="bc-course">👨‍🏫 {{ c.course.instructor.display_name }}</div>{% endif %}
+                    <div class="bc-progress">
+                        <div class="bc-bar"><span style="width: {{ c.pct }}%"></span></div>
+                        <div class="bc-prog-meta">{{ c.completed }}/{{ c.total }} completed · {{ c.pct }}%</div>
+                        {% if c.provisional %}<div class="bc-prog-meta" style="color:var(--warning,#b7791f);">⏳ Payment under verification — preview access</div>{% endif %}
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <div class="sec-head"><h2>My batches</h2></div>
         {% if batch_cards %}
         <div class="batch-stack">

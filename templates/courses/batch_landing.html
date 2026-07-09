@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ batch.course.title }} — {{ batch.name }}{% endblock %}
+
+{% block content %}
+<div style="max-width:920px; margin:0 auto;">
+    <a href="{% url 'courses:catalog' %}" class="card-meta">← All courses</a>
+    <div style="display:grid; grid-template-columns:1.6fr 1fr; gap:24px; margin-top:10px; align-items:start;">
+        <div>
+            <h1 style="margin:0 0 6px;">{{ batch.course.title }}</h1>
+            <div class="card-meta">{{ batch.name }}</div>
+            {% if batch.course.summary %}<p style="margin-top:12px;">{{ batch.course.summary }}</p>{% endif %}
+            <div class="card-meta" style="margin:14px 0;">
+                {{ lesson_count }} lesson{{ lesson_count|pluralize }}{% if total_duration %} · {{ total_duration }} of video{% endif %}
+            </div>
+
+            <h3 style="margin-top:24px;">Course content</h3>
+            <div class="playlist" style="margin-top:10px;">
+                {% for l in lessons %}
+                <div class="playlist-item locked">
+                    <div class="num">🔒</div>
+                    <div>
+                        <div class="pl-title">{{ l.title }}</div>
+                        <div class="pl-meta">{% if l.duration_display %}{{ l.duration_display }}{% endif %}</div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="card-meta">Content is being added.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <aside class="card" style="position:sticky; top:20px;">
+            <div class="card-meta">Starts from</div>
+            <div style="font-size:2rem; font-weight:700; margin-bottom:14px;">₹{{ min_price }}</div>
+            <a class="btn btn-block" href="{% url 'courses:checkout' batch.code %}">Enroll now →</a>
+        </aside>
+    </div>
+</div>
+{% endblock %}

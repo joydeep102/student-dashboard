@@ -6,7 +6,20 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .models import Batch, BatchEnrollment, Course, Lesson, LessonProgress, Payment, Plan
+from .models import (
+    Batch,
+    BatchEnrollment,
+    Course,
+    CourseEnrollment,
+    CoursePayment,
+    Lecture,
+    Lesson,
+    LessonProgress,
+    Payment,
+    Plan,
+    RecordedCourse,
+    Section,
+)
 
 User = get_user_model()
 
@@ -186,10 +199,6 @@ class CheckoutTests(BaseData):
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "Enroll now")
 
-    def test_catalog_lists_course(self):
-        res = self.client.get(reverse("courses:catalog"))
-        self.assertContains(res, "Recorded Trading")
-
 
 class PublicCheckoutTests(BaseData):
     """Logged-out visitors (from the marketing site) browse + self-register."""
@@ -197,8 +206,6 @@ class PublicCheckoutTests(BaseData):
     def test_catalog_is_public(self):
         res = self.client.get(reverse("courses:catalog"))  # no login
         self.assertEqual(res.status_code, 200)
-        self.assertContains(res, "Recorded Trading")
-        self.assertContains(res, "From ₹")
 
     def test_landing_is_public(self):
         res = self.client.get(self.batch.get_absolute_url())  # no login
@@ -296,6 +303,153 @@ class RazorpayVerifyTests(BaseData):
         })
         self.assertEqual(res.status_code, 400)
         self.assertFalse(BatchEnrollment.objects.filter(student=self.student).exists())
+
+
+class RecordedCourseData(TestCase):
+    """A published Udemy-style course: 1 preview lecture + 2 paid lectures."""
+
+    def setUp(self):
+        self.instructor = User.objects.create_user(
+            email="tutor@test.com", password="pw", role="instructor"
+        )
+        self.course = RecordedCourse.objects.create(
+            title="Options Mastery", instructor=self.instructor, price=2999, is_published=True
+        )
+        self.sec = Section.objects.create(course=self.course, title="Intro", order=1)
+        self.lec1 = Lecture.objects.create(
+            section=self.sec, title="Welcome", youtube_id="aaaaaaaaaaa", order=1, is_preview=True
+        )
+        self.lec2 = Lecture.objects.create(
+            section=self.sec, title="Setup", youtube_id="bbbbbbbbbbb", order=2
+        )
+        self.lec3 = Lecture.objects.create(
+            section=self.sec, title="Advanced", youtube_id="ccccccccccc", order=3
+        )
+        self.student = User.objects.create_user(
+            email="learn@test.com", password="pw", role="student", phone="9",
+        )
+
+
+class RecordedCourseAccessTests(RecordedCourseData):
+    def test_catalog_and_landing_public(self):
+        cat = self.client.get(reverse("courses:catalog"))
+        self.assertContains(cat, "Options Mastery")
+        land = self.client.get(self.course.get_absolute_url())
+        self.assertEqual(land.status_code, 200)
+        self.assertContains(land, "Welcome")       # preview lecture visible
+        self.assertContains(land, "Enroll now")
+
+    def test_preview_lecture_watchable_by_anyone(self):
+        # Anonymous can hit the preview lecture source.
+        res = self.client.get(
+            reverse("courses:lecture_source", args=[self.course.slug, self.lec1.pk])
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["videoId"], "aaaaaaaaaaa")
+
+    def test_paid_lecture_blocked_without_enrollment(self):
+        res = self.client.get(
+            reverse("courses:lecture_source", args=[self.course.slug, self.lec2.pk])
+        )
+        self.assertEqual(res.status_code, 404)
+
+    def test_full_enrollment_unlocks_all(self):
+        CourseEnrollment.objects.create(student=self.student, course=self.course)
+        self.client.force_login(self.student)
+        res = self.client.get(reverse("courses:learn", args=[self.course.slug, self.lec3.pk]))
+        self.assertEqual(res.status_code, 200)
+
+    @override_settings(PROVISIONAL_PREVIEW_LESSONS=2)
+    def test_provisional_previews_first_two_only(self):
+        from .access import can_watch_lecture, get_course_enrollment
+
+        CourseEnrollment.objects.create(
+            student=self.student, course=self.course, is_provisional=True
+        )
+        e = get_course_enrollment(self.student, self.course)
+        self.assertTrue(can_watch_lecture(self.student, self.lec1, e))   # preview
+        self.assertTrue(can_watch_lecture(self.student, self.lec2, e))   # 2nd
+        self.assertFalse(can_watch_lecture(self.student, self.lec3, e))  # 3rd locked
+
+
+class RecordedCoursePaymentTests(RecordedCourseData):
+    def test_mark_paid_creates_full_enrollment(self):
+        pay = CoursePayment.objects.create(
+            student=self.student, course=self.course, amount=2999,
+            method=CoursePayment.Method.MANUAL_UPI, status=CoursePayment.Status.PENDING,
+        )
+        pay.mark_paid()
+        e = CourseEnrollment.objects.get(student=self.student, course=self.course)
+        self.assertTrue(e.is_active)
+        self.assertFalse(e.is_provisional)
+
+    def test_upi_submit_grants_provisional(self):
+        self.client.force_login(self.student)
+        res = self.client.post(
+            reverse("courses:course_upi_submit", args=[self.course.slug]),
+            {"upi_reference": "UTR55"},
+        )
+        self.assertEqual(res.status_code, 200)
+        pay = CoursePayment.objects.get(student=self.student, course=self.course)
+        self.assertEqual(pay.status, CoursePayment.Status.PENDING)
+        e = CourseEnrollment.objects.get(student=self.student, course=self.course)
+        self.assertTrue(e.is_provisional)
+
+    @override_settings(RAZORPAY_WEBHOOK_SECRET="whsec")
+    def test_course_webhook_unlocks(self):
+        pay = CoursePayment.objects.create(
+            student=self.student, course=self.course, amount=2999,
+            method=CoursePayment.Method.RAZORPAY, razorpay_order_id="order_c1",
+        )
+        body = json.dumps({
+            "event": "payment.captured",
+            "payload": {"payment": {"entity": {"id": "pay_c1", "order_id": "order_c1"}}},
+        }).encode()
+        sig = hmac.new(b"whsec", body, hashlib.sha256).hexdigest()
+        res = self.client.post(
+            reverse("courses:course_razorpay_webhook"), data=body,
+            content_type="application/json", HTTP_X_RAZORPAY_SIGNATURE=sig,
+        )
+        self.assertEqual(res.status_code, 200)
+        pay.refresh_from_db()
+        self.assertEqual(pay.status, CoursePayment.Status.PAID)
+        self.assertTrue(CourseEnrollment.objects.filter(student=self.student).exists())
+
+
+class CourseStudioTests(RecordedCourseData):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(self.instructor)
+
+    def test_instructor_builds_and_publishes_course(self):
+        # Create a fresh draft course.
+        self.client.post(reverse("trainers:course_create"), {"title": "My New Course"})
+        course = RecordedCourse.objects.get(title="My New Course")
+        self.assertEqual(course.instructor, self.instructor)
+        self.assertFalse(course.is_published)
+
+        # Add a section + lecture.
+        self.client.post(reverse("trainers:section_add", args=[course.slug]), {"title": "Ch 1"})
+        section = course.sections.get()
+        self.client.post(
+            reverse("trainers:lecture_add", args=[course.slug, section.pk]),
+            {"title": "Lesson A", "youtube_id": "zzzzzzzzzzz", "duration_min": "5"},
+        )
+        lec = section.lectures.get()
+        self.assertEqual(lec.duration_seconds, 300)
+
+        # Publish.
+        self.client.post(reverse("trainers:course_publish", args=[course.slug]))
+        course.refresh_from_db()
+        self.assertTrue(course.is_published)
+
+    def test_cannot_edit_another_instructors_course(self):
+        other = User.objects.create_user(email="other@test.com", password="pw", role="instructor")
+        self.client.force_login(other)
+        res = self.client.post(
+            reverse("trainers:section_add", args=[self.course.slug]), {"title": "Hack"}
+        )
+        self.assertEqual(res.status_code, 403)
 
 
 @override_settings(RAZORPAY_WEBHOOK_SECRET="whsec")
