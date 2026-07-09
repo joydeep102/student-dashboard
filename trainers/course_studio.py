@@ -6,11 +6,11 @@ YouTube ids), set the price and thumbnail, and publish — all from the front en
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
-from django.db.models import Max
+from django.db.models import Count, Max, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from courses.models import Lecture, RecordedCourse, Section
+from courses.models import CoursePayment, Lecture, RecordedCourse, Section
 
 from .views import trainer_required
 
@@ -30,12 +30,48 @@ def _next_order(qs):
 
 @trainer_required
 def my_courses(request):
-    """List the instructor's recorded courses."""
-    courses = (
+    """List the instructor's courses with sales & earnings."""
+    paid = Q(payments__status=CoursePayment.Status.PAID)
+    pending = Q(payments__status=CoursePayment.Status.PENDING)
+    courses = list(
         RecordedCourse.objects.filter(instructor=request.user)
+        .annotate(
+            sales=Count("payments", filter=paid, distinct=True),
+            revenue=Sum("payments__amount", filter=paid),
+            students=Count("enrollments", filter=Q(enrollments__is_active=True), distinct=True),
+            pending=Count("payments", filter=pending, distinct=True),
+        )
         .order_by("-updated_at")
     )
-    return render(request, "trainers/courses.html", {"courses": courses})
+    totals = {
+        "revenue": sum(c.revenue or 0 for c in courses),
+        "sales": sum(c.sales for c in courses),
+        "students": sum(c.students for c in courses),
+        "pending": sum(c.pending for c in courses),
+    }
+    return render(request, "trainers/courses.html", {"courses": courses, "totals": totals})
+
+
+@trainer_required
+def course_sales(request, slug):
+    """A course's buyers list (sales) for its instructor."""
+    course = _own_course(request, slug)
+    payments = (
+        course.payments.select_related("student")
+        .exclude(status=CoursePayment.Status.CREATED)
+        .order_by("-created_at")
+    )
+    paid = [p for p in payments if p.status == CoursePayment.Status.PAID]
+    stats = {
+        "revenue": sum(p.amount for p in paid),
+        "sales": len(paid),
+        "pending": sum(1 for p in payments if p.status == CoursePayment.Status.PENDING),
+    }
+    return render(
+        request,
+        "trainers/course_sales.html",
+        {"course": course, "payments": payments, "stats": stats},
+    )
 
 
 @trainer_required

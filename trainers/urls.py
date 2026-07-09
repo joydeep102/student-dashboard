@@ -14,6 +14,7 @@ urlpatterns = [
     # Course Studio — build recorded courses
     path("courses/", course_studio.my_courses, name="courses"),
     path("courses/new/", course_studio.course_create, name="course_create"),
+    path("courses/<slug:slug>/sales/", course_studio.course_sales, name="course_sales"),
     path("courses/<slug:slug>/", course_studio.course_edit, name="course_edit"),
     path("courses/<slug:slug>/publish/", course_studio.course_publish, name="course_publish"),
     path("courses/<slug:slug>/delete/", course_studio.course_delete, name="course_delete"),

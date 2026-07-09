@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Sales — {{ course.title }}{% endblock %}
+
+{% block content %}
+<div style="max-width:820px; margin:0 auto;">
+    <a href="{% url 'trainers:courses' %}" class="card-meta">← My Courses</a>
+    <h1 style="margin-top:6px;">Sales — {{ course.title }}</h1>
+
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:16px 0;">
+        <div class="card" style="text-align:center;">
+            <div style="font-size:1.6rem; font-weight:700;">₹{{ stats.revenue|floatformat:0 }}</div>
+            <div class="card-meta">Earnings</div>
+        </div>
+        <div class="card" style="text-align:center;">
+            <div style="font-size:1.6rem; font-weight:700;">{{ stats.sales }}</div>
+            <div class="card-meta">Paid sales</div>
+        </div>
+        <div class="card" style="text-align:center;">
+            <div style="font-size:1.6rem; font-weight:700; {% if stats.pending %}color:var(--warning,#b7791f);{% endif %}">{{ stats.pending }}</div>
+            <div class="card-meta">Pending verify</div>
+        </div>
+    </div>
+
+    <div class="card" style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; min-width:560px;">
+            <thead>
+                <tr style="text-align:left; border-bottom:1px solid var(--border);">
+                    <th style="padding:8px;">Student</th>
+                    <th style="padding:8px;">Contact</th>
+                    <th style="padding:8px;">Amount</th>
+                    <th style="padding:8px;">Method</th>
+                    <th style="padding:8px;">Status</th>
+                    <th style="padding:8px;">Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:8px;">{{ p.student.display_name }}</td>
+                    <td style="padding:8px;" class="card-meta">{{ p.student.email }}<br>{{ p.student.phone }}</td>
+                    <td style="padding:8px;">₹{{ p.amount|floatformat:0 }}</td>
+                    <td style="padding:8px;" class="card-meta">{{ p.get_method_display }}</td>
+                    <td style="padding:8px;">
+                        {% if p.status == 'paid' %}<span style="color:var(--success,#16a34a);">✓ Paid</span>
+                        {% elif p.status == 'pending' %}<span style="color:var(--warning,#b7791f);">⏳ Pending</span>
+                        {% else %}<span class="card-meta">{{ p.get_status_display }}</span>{% endif %}
+                    </td>
+                    <td style="padding:8px;" class="card-meta">{{ p.created_at|date:"d M Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" style="padding:16px; text-align:center; color:var(--muted);">No sales yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="card-meta" style="margin-top:12px;">
+        Manual-UPI payments show as ⏳ Pending until an admin verifies them.
+    </p>
+</div>
+{% endblock %}

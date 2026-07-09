@@ -2,9 +2,29 @@
 {% block title %}My Courses — Course Studio{% endblock %}
 
 {% block content %}
-<div style="max-width:820px; margin:0 auto;">
+<div style="max-width:860px; margin:0 auto;">
     <h1>My Courses</h1>
-    <p style="color:var(--muted);">Build and publish your recorded courses.</p>
+    <p style="color:var(--muted);">Build, publish, and track sales of your recorded courses.</p>
+
+    <!-- Earnings summary -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin:18px 0;">
+        <div class="card" style="text-align:center;">
+            <div style="font-size:1.7rem; font-weight:700;">₹{{ totals.revenue|floatformat:0 }}</div>
+            <div class="card-meta">Total earnings</div>
+        </div>
+        <div class="card" style="text-align:center;">
+            <div style="font-size:1.7rem; font-weight:700;">{{ totals.sales }}</div>
+            <div class="card-meta">Sales</div>
+        </div>
+        <div class="card" style="text-align:center;">
+            <div style="font-size:1.7rem; font-weight:700;">{{ totals.students }}</div>
+            <div class="card-meta">Students</div>
+        </div>
+        <div class="card" style="text-align:center;">
+            <div style="font-size:1.7rem; font-weight:700; {% if totals.pending %}color:var(--warning,#b7791f);{% endif %}">{{ totals.pending }}</div>
+            <div class="card-meta">Pending verify</div>
+        </div>
+    </div>
 
     <div class="card" style="margin:16px 0;">
         <form method="post" action="{% url 'trainers:course_create' %}"
@@ -20,18 +40,23 @@
     </div>
 
     {% for course in courses %}
-    <div class="card" style="margin-bottom:12px; display:flex; align-items:center; gap:14px;">
+    <div class="card" style="margin-bottom:12px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
         {% if course.thumbnail %}
         <img src="{{ course.thumbnail.url }}" alt="" style="width:96px; height:54px; object-fit:cover; border-radius:8px;">
         {% endif %}
-        <div style="flex:1;">
+        <div style="flex:1; min-width:180px;">
             <div style="font-weight:600;">{{ course.title }}</div>
             <div class="card-meta">
-                ₹{{ course.price }} · {{ course.lecture_count }} lecture{{ course.lecture_count|pluralize }}
+                ₹{{ course.price|floatformat:0 }}
                 {% if course.is_published %}· <span style="color:var(--success,#16a34a);">● Published</span>
                 {% else %}· <span style="color:var(--muted);">○ Draft</span>{% endif %}
             </div>
         </div>
+        <div style="text-align:center; min-width:80px;">
+            <div style="font-weight:700;">₹{{ course.revenue|default:0|floatformat:0 }}</div>
+            <div class="card-meta">{{ course.sales }} sale{{ course.sales|pluralize }}{% if course.pending %} · {{ course.pending }} pending{% endif %}</div>
+        </div>
+        <a class="btn btn-ghost btn-sm" href="{% url 'trainers:course_sales' course.slug %}">Sales</a>
         <a class="btn btn-sm" href="{% url 'trainers:course_edit' course.slug %}">Edit</a>
     </div>
     {% empty %}

@@ -443,6 +443,28 @@ class CourseStudioTests(RecordedCourseData):
         course.refresh_from_db()
         self.assertTrue(course.is_published)
 
+    def test_sales_tracking(self):
+        # One paid + one pending payment for the instructor's course.
+        buyer = User.objects.create_user(email="b1@test.com", password="pw", role="student")
+        CoursePayment.objects.create(
+            student=buyer, course=self.course, amount=2999,
+            method=CoursePayment.Method.RAZORPAY, status=CoursePayment.Status.PAID,
+        )
+        buyer2 = User.objects.create_user(email="b2@test.com", password="pw", role="student")
+        CoursePayment.objects.create(
+            student=buyer2, course=self.course, amount=2999,
+            method=CoursePayment.Method.MANUAL_UPI, status=CoursePayment.Status.PENDING,
+        )
+        # My Courses shows earnings.
+        page = self.client.get(reverse("trainers:courses"))
+        self.assertContains(page, "Total earnings")
+        self.assertContains(page, "2999")           # revenue from the paid sale
+        # Sales detail lists the buyers.
+        sales = self.client.get(reverse("trainers:course_sales", args=[self.course.slug]))
+        self.assertContains(sales, "b1@test.com")
+        self.assertContains(sales, "b2@test.com")
+        self.assertContains(sales, "Pending")
+
     def test_cannot_edit_another_instructors_course(self):
         other = User.objects.create_user(email="other@test.com", password="pw", role="instructor")
         self.client.force_login(other)
