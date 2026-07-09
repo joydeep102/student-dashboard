@@ -25,6 +25,11 @@ class PaymentSettings(models.Model):
         default=2,
         help_text="Lectures a manual-UPI buyer can preview before admin verification.",
     )
+    default_instructor_share = models.PositiveSmallIntegerField(
+        default=70,
+        help_text="Default % of course revenue an instructor keeps (the rest is "
+        "the platform's cut). Can be overridden per instructor.",
+    )
 
     class Meta:
         verbose_name = "Payment settings"
@@ -734,3 +739,49 @@ class CoursePayment(models.Model):
             self.paid_at = timezone.now()
             self.save(update_fields=["status", "paid_at"])
         return self.grant_access()
+
+
+class Payout(models.Model):
+    """A payout of earnings from the platform to an instructor.
+
+    An instructor can **request** a payout of their available share; an admin
+    then **approves** (marks it paid, after transferring the money outside the
+    app) or **rejects** it. Admins can also record a paid payout directly. Only
+    ``paid`` payouts reduce an instructor's outstanding balance.
+    """
+
+    class Status(models.TextChoices):
+        REQUESTED = "requested", "Requested"
+        PAID = "paid", "Paid"
+        REJECTED = "rejected", "Rejected"
+
+    instructor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="payouts",
+        limit_choices_to={"role__in": ["instructor", "admin"]},
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.REQUESTED)
+    note = models.CharField(max_length=200, blank=True, help_text="e.g. UPI ref / bank txn id.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"₹{self.amount} → {self.instructor} ({self.get_status_display()})"
+
+    def mark_paid(self):
+        self.status = self.Status.PAID
+        if self.paid_at is None:
+            self.paid_at = timezone.now()
+        self.save(update_fields=["status", "paid_at"])

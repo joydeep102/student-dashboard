@@ -32,6 +32,10 @@ class UserAdmin(BaseUserAdmin):
         ("Login", {"fields": ("email", "password")}),
         ("Personal info", {"fields": ("first_name", "last_name")}),
         ("Portal profile", {"fields": ("role", "phone", "avatar", "bio")}),
+        ("Instructor payout", {
+            "fields": ("payout_share_percent",),
+            "description": "Revenue-share % this instructor keeps. Blank = platform default.",
+        }),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
     )

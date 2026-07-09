@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Instructor Payouts{% endblock %}
+
+{% block content %}
+<div style="max-width:900px; margin:0 auto;">
+    <h1>Instructor Payouts</h1>
+    <p style="color:var(--muted);">Each instructor's share of verified sales, and what's still owed. Record a payout after you transfer the money.</p>
+
+    <!-- Pending requests -->
+    {% if pending %}
+    <h2 style="margin-top:22px;">Pending requests</h2>
+    <div class="card" style="margin-top:8px;">
+        {% for p in pending %}
+        <div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+            <div style="flex:1; min-width:180px;">
+                <strong>{{ p.instructor.display_name }}</strong> requests
+                <strong>₹{{ p.amount|floatformat:0 }}</strong>
+                <div class="card-meta">{{ p.created_at|date:"d M Y" }}{% if p.note %} · {{ p.note }}{% endif %}</div>
+            </div>
+            <form method="post" action="{% url 'trainers:payout_approve' p.pk %}"
+                  onsubmit="return confirm('Approve ₹{{ p.amount|floatformat:0 }} to {{ p.instructor.display_name }}? (Send the money first.)');"
+                  style="display:flex; gap:6px;">
+                {% csrf_token %}
+                <input type="text" name="note" placeholder="txn ref" value="{{ p.note }}"
+                       style="width:120px; padding:6px; border:1px solid var(--border); border-radius:6px;">
+                <button type="submit" class="btn btn-sm">Approve &amp; mark paid</button>
+            </form>
+            <form method="post" action="{% url 'trainers:payout_reject' p.pk %}"
+                  onsubmit="return confirm('Reject this request?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--danger,#dc2626);">Reject</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <h2 style="margin-top:22px;">Balances</h2>
+    <div class="card" style="overflow-x:auto; margin-top:8px;">
+        <table style="width:100%; border-collapse:collapse; min-width:720px;">
+            <thead>
+                <tr style="text-align:left; border-bottom:1px solid var(--border);">
+                    <th style="padding:8px;">Instructor</th>
+                    <th style="padding:8px;">Gross sales</th>
+                    <th style="padding:8px;">Share</th>
+                    <th style="padding:8px;">Payable</th>
+                    <th style="padding:8px;">Paid out</th>
+                    <th style="padding:8px;">Balance</th>
+                    <th style="padding:8px;">Pay out</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr style="border-bottom:1px solid var(--border);">
+                    <td style="padding:8px;">
+                        {{ r.instructor.display_name }}
+                        <div class="card-meta">{{ r.instructor.email }}</div>
+                    </td>
+                    <td style="padding:8px;">₹{{ r.earn.gross|floatformat:0 }}</td>
+                    <td style="padding:8px;">{{ r.earn.share }}%</td>
+                    <td style="padding:8px;">₹{{ r.earn.payable|floatformat:0 }}</td>
+                    <td style="padding:8px;">₹{{ r.earn.paid_out|floatformat:0 }}</td>
+                    <td style="padding:8px; font-weight:700; color:var(--success,#16a34a);">₹{{ r.earn.balance|floatformat:0 }}</td>
+                    <td style="padding:8px;">
+                        {% if r.earn.balance > 0 %}
+                        <form method="post" action="{% url 'trainers:payout_pay' r.instructor.id %}"
+                              onsubmit="return confirm('Record a payout of ₹{{ r.earn.balance|floatformat:0 }} to {{ r.instructor.display_name }}?');"
+                              style="display:flex; gap:6px; align-items:center;">
+                            {% csrf_token %}
+                            <input type="number" name="amount" step="1" min="1" value="{{ r.earn.balance|floatformat:0 }}"
+                                   style="width:90px; padding:6px; border:1px solid var(--border); border-radius:6px;">
+                            <button type="submit" class="btn btn-sm">Pay out</button>
+                        </form>
+                        {% else %}
+                        <span class="card-meta">Settled</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" style="padding:16px; text-align:center; color:var(--muted);">No instructor sales yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="card-meta" style="margin-top:12px;">
+        Payouts are records only — transfer the money via your bank/UPI, then log it here so balances stay accurate.
+        Set each instructor's share in <a href="/admin/accounts/user/">Admin → Users</a>, or the default in
+        <a href="/admin/courses/paymentsettings/">Payment settings</a>.
+    </p>
+</div>
+{% endblock %}

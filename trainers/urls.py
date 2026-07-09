@@ -14,6 +14,12 @@ urlpatterns = [
     # Course Studio — build recorded courses
     path("courses/", course_studio.my_courses, name="courses"),
     path("courses/new/", course_studio.course_create, name="course_create"),
+    # Payouts
+    path("payouts/request/", course_studio.request_payout, name="request_payout"),
+    path("payouts/", course_studio.payouts, name="payouts"),
+    path("payouts/pay/<int:user_id>/", course_studio.payout_pay, name="payout_pay"),
+    path("payouts/<int:pk>/approve/", course_studio.payout_approve, name="payout_approve"),
+    path("payouts/<int:pk>/reject/", course_studio.payout_reject, name="payout_reject"),
     path("courses/<slug:slug>/sales/", course_studio.course_sales, name="course_sales"),
     path("courses/<slug:slug>/", course_studio.course_edit, name="course_edit"),
     path("courses/<slug:slug>/publish/", course_studio.course_publish, name="course_publish"),

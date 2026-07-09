@@ -16,6 +16,7 @@ from .models import (
     LessonProgress,
     Payment,
     PaymentSettings,
+    Payout,
     Plan,
     RecordedCourse,
     Section,
@@ -36,7 +37,7 @@ class PaymentSettingsAdmin(admin.ModelAdmin):
             "fields": ("razorpay_key_id", "razorpay_key_secret", "razorpay_webhook_secret"),
             "description": "Fill both key id + secret to enable online checkout.",
         }),
-        ("Preview", {"fields": ("preview_lessons",)}),
+        ("Preview & payouts", {"fields": ("preview_lessons", "default_instructor_share")}),
     )
 
     def has_add_permission(self, request):
@@ -339,3 +340,21 @@ class CoursePaymentAdmin(admin.ModelAdmin):
             f"{done} payment(s) marked paid — students now have full course access.",
             messages.SUCCESS,
         )
+
+
+@admin.register(Payout)
+class PayoutAdmin(admin.ModelAdmin):
+    list_display = ("instructor", "amount", "status", "note", "created_at", "paid_at", "created_by")
+    list_filter = ("status", "instructor")
+    search_fields = ("instructor__email", "instructor__first_name", "note")
+    autocomplete_fields = ["instructor"]
+    readonly_fields = ("created_at",)
+    actions = ["approve_payouts"]
+
+    @admin.action(description="✓ Approve & mark selected requests PAID")
+    def approve_payouts(self, request, queryset):
+        done = 0
+        for payout in queryset.filter(status=Payout.Status.REQUESTED):
+            payout.mark_paid()
+            done += 1
+        self.message_user(request, f"{done} payout(s) approved and marked paid.", messages.SUCCESS)

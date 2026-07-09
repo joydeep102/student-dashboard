@@ -52,6 +52,9 @@ class User(AbstractUser):
     phone = models.CharField(max_length=20, blank=True)
     avatar = models.ImageField(upload_to="avatars/", blank=True, null=True)
     bio = models.TextField(blank=True)
+    # Instructor revenue share (% they keep of their course sales). Blank = use
+    # the platform default from Payment settings.
+    payout_share_percent = models.PositiveSmallIntegerField(null=True, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []  # email + password are prompted by createsuperuser

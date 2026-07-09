@@ -26,6 +26,48 @@
         </div>
     </div>
 
+    <!-- Payout share -->
+    <div class="card" style="margin:16px 0;">
+        <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+            <div>
+                <div class="card-meta">Your share</div>
+                <div style="font-size:1.4rem; font-weight:700;">{{ earnings.share }}%</div>
+            </div>
+            <div>
+                <div class="card-meta">Payable (your cut)</div>
+                <div style="font-size:1.4rem; font-weight:700;">₹{{ earnings.payable|floatformat:0 }}</div>
+            </div>
+            <div>
+                <div class="card-meta">Paid out</div>
+                <div style="font-size:1.4rem; font-weight:700;">₹{{ earnings.paid_out|floatformat:0 }}</div>
+            </div>
+            {% if earnings.requested %}
+            <div>
+                <div class="card-meta">Requested</div>
+                <div style="font-size:1.4rem; font-weight:700; color:var(--warning,#b7791f);">₹{{ earnings.requested|floatformat:0 }}</div>
+            </div>
+            {% endif %}
+            <div style="margin-left:auto; text-align:right;">
+                <div class="card-meta">Balance owed to you</div>
+                <div style="font-size:1.7rem; font-weight:800; color:var(--success,#16a34a);">₹{{ earnings.balance|floatformat:0 }}</div>
+            </div>
+        </div>
+        {% if earnings.available > 0 %}
+        <form method="post" action="{% url 'trainers:request_payout' %}"
+              onsubmit="return confirm('Request a payout of ₹{{ earnings.available|floatformat:0 }}?');"
+              style="display:flex; gap:8px; align-items:center; margin-top:14px; flex-wrap:wrap;">
+            {% csrf_token %}
+            <input type="number" name="amount" step="1" min="1" value="{{ earnings.available|floatformat:0 }}"
+                   style="width:120px; padding:8px; border:1px solid var(--border); border-radius:8px;">
+            <input type="text" name="note" placeholder="Your UPI ID / bank (optional)"
+                   style="flex:1; min-width:180px; padding:8px; border:1px solid var(--border); border-radius:8px;">
+            <button type="submit" class="btn">Request payout</button>
+        </form>
+        {% elif earnings.requested %}
+        <p class="card-meta" style="margin-top:12px;">⏳ Your payout request is awaiting admin approval.</p>
+        {% endif %}
+    </div>
+
     <div class="card" style="margin:16px 0;">
         <form method="post" action="{% url 'trainers:course_create' %}"
               style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">

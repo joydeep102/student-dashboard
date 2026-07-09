@@ -465,6 +465,86 @@ class CourseStudioTests(RecordedCourseData):
         self.assertContains(sales, "b2@test.com")
         self.assertContains(sales, "Pending")
 
+    def test_instructor_payout_share_and_payout(self):
+        from decimal import Decimal
+
+        from .models import Payout
+        from .payment_config import instructor_earnings
+
+        # Two paid sales of ₹2999 each = ₹5998 gross.
+        for i in range(2):
+            b = User.objects.create_user(email=f"pb{i}@test.com", password="pw", role="student")
+            CoursePayment.objects.create(
+                student=b, course=self.course, amount=2999,
+                method=CoursePayment.Method.RAZORPAY, status=CoursePayment.Status.PAID,
+            )
+        # Instructor keeps 60%.
+        self.instructor.payout_share_percent = 60
+        self.instructor.save()
+        earn = instructor_earnings(self.instructor)
+        self.assertEqual(earn["gross"], Decimal("5998"))
+        self.assertEqual(earn["payable"], Decimal("3598.80"))
+        self.assertEqual(earn["balance"], Decimal("3598.80"))
+
+        # Admin records a payout via the button.
+        admin = User.objects.create_user(
+            email="boss@test.com", password="pw", role="admin", is_staff=True, is_superuser=True
+        )
+        self.client.force_login(admin)
+        res = self.client.post(
+            reverse("trainers:payout_pay", args=[self.instructor.id]),
+            {"amount": "3000", "note": "UPI ref 123"},
+        )
+        self.assertEqual(Payout.objects.filter(instructor=self.instructor).count(), 1)
+        earn = instructor_earnings(self.instructor)
+        self.assertEqual(earn["paid_out"], Decimal("3000"))
+        self.assertEqual(earn["balance"], Decimal("598.80"))
+
+    def test_instructor_requests_payout_admin_approves(self):
+        from decimal import Decimal
+
+        from .models import Payout
+        from .payment_config import instructor_earnings
+
+        buyer = User.objects.create_user(email="rq@test.com", password="pw", role="student")
+        CoursePayment.objects.create(
+            student=buyer, course=self.course, amount=1000,
+            method=CoursePayment.Method.RAZORPAY, status=CoursePayment.Status.PAID,
+        )
+        self.instructor.payout_share_percent = 50
+        self.instructor.save()
+        # Instructor requests their available ₹500.
+        self.client.force_login(self.instructor)
+        self.client.post(reverse("trainers:request_payout"), {"amount": "500", "note": "me@upi"})
+        req = Payout.objects.get(instructor=self.instructor)
+        self.assertEqual(req.status, Payout.Status.REQUESTED)
+        earn = instructor_earnings(self.instructor)
+        self.assertEqual(earn["requested"], Decimal("500"))
+        self.assertEqual(earn["available"], Decimal("0"))   # nothing left to request
+        self.assertEqual(earn["balance"], Decimal("500"))   # still owed until paid
+
+        # Instructor can't over-request beyond available.
+        self.client.post(reverse("trainers:request_payout"), {"amount": "999"})
+        self.assertEqual(Payout.objects.filter(instructor=self.instructor).count(), 1)
+
+        # Admin approves → paid.
+        admin = User.objects.create_user(
+            email="boss2@test.com", password="pw", role="admin", is_staff=True, is_superuser=True
+        )
+        self.client.force_login(admin)
+        self.client.post(reverse("trainers:payout_approve", args=[req.pk]), {"note": "utr9"})
+        req.refresh_from_db()
+        self.assertEqual(req.status, Payout.Status.PAID)
+        self.assertIsNotNone(req.paid_at)
+        earn = instructor_earnings(self.instructor)
+        self.assertEqual(earn["paid_out"], Decimal("500"))
+        self.assertEqual(earn["balance"], Decimal("0"))
+
+    def test_payouts_page_is_staff_only(self):
+        # A plain instructor can't open the admin payouts page.
+        res = self.client.get(reverse("trainers:payouts"))
+        self.assertNotEqual(res.status_code, 200)  # redirect to admin login
+
     def test_cannot_edit_another_instructors_course(self):
         other = User.objects.create_user(email="other@test.com", password="pw", role="instructor")
         self.client.force_login(other)

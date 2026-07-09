@@ -5,12 +5,15 @@ YouTube ids), set the price and thumbnail, and publish — all from the front en
 """
 
 from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Max, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from courses.models import CoursePayment, Lecture, RecordedCourse, Section
+from courses.models import CoursePayment, Lecture, Payout, RecordedCourse, Section
+from courses.payment_config import instructor_earnings
 
 from .views import trainer_required
 
@@ -49,7 +52,113 @@ def my_courses(request):
         "students": sum(c.students for c in courses),
         "pending": sum(c.pending for c in courses),
     }
-    return render(request, "trainers/courses.html", {"courses": courses, "totals": totals})
+    return render(
+        request,
+        "trainers/courses.html",
+        {
+            "courses": courses,
+            "totals": totals,
+            "earnings": instructor_earnings(request.user),
+        },
+    )
+
+
+@trainer_required
+@require_POST
+def request_payout(request):
+    """Instructor requests a payout of (part of) their available balance."""
+    earn = instructor_earnings(request.user)
+    available = float(earn["available"])
+    try:
+        amount = round(float(request.POST.get("amount") or available), 2)
+    except (TypeError, ValueError):
+        amount = 0
+    if amount <= 0 or amount > available + 0.01:
+        messages.error(
+            request,
+            "You can request up to ₹{:,.0f}.".format(available) if available > 0
+            else "You have no balance available to request right now.",
+        )
+        return redirect("trainers:courses")
+    Payout.objects.create(
+        instructor=request.user,
+        amount=amount,
+        status=Payout.Status.REQUESTED,
+        note=(request.POST.get("note") or "").strip(),
+        created_by=request.user,
+    )
+    messages.success(request, f"Payout request for ₹{amount:,.0f} submitted for approval.")
+    return redirect("trainers:courses")
+
+
+@staff_member_required
+def payouts(request):
+    """Admin view: pending payout requests + every instructor's balance."""
+    User = get_user_model()
+    pending = (
+        Payout.objects.filter(status=Payout.Status.REQUESTED)
+        .select_related("instructor")
+        .order_by("created_at")
+    )
+    instructors = (
+        User.objects.filter(role__in=["instructor", "admin"])
+        .filter(recorded_courses__isnull=False)
+        .distinct()
+        .order_by("first_name", "email")
+    )
+    rows = [{"instructor": u, "earn": instructor_earnings(u)} for u in instructors]
+    rows = [r for r in rows if r["earn"]["gross"] or r["earn"]["paid_out"]]
+    return render(request, "trainers/payouts.html", {"rows": rows, "pending": pending})
+
+
+@staff_member_required
+@require_POST
+def payout_approve(request, pk):
+    """Approve a payout request — marks it paid (money sent outside the app)."""
+    payout = get_object_or_404(Payout, pk=pk, status=Payout.Status.REQUESTED)
+    payout.note = (request.POST.get("note") or payout.note).strip()
+    payout.created_by = payout.created_by or request.user
+    payout.mark_paid()
+    messages.success(
+        request, f"Approved ₹{payout.amount:,.0f} payout to {payout.instructor.display_name}."
+    )
+    return redirect("trainers:payouts")
+
+
+@staff_member_required
+@require_POST
+def payout_reject(request, pk):
+    payout = get_object_or_404(Payout, pk=pk, status=Payout.Status.REQUESTED)
+    payout.status = Payout.Status.REJECTED
+    payout.save(update_fields=["status"])
+    messages.success(request, "Payout request rejected.")
+    return redirect("trainers:payouts")
+
+
+@staff_member_required
+@require_POST
+def payout_pay(request, user_id):
+    """Admin records a payout to an instructor directly (already transferred)."""
+    User = get_user_model()
+    instructor = get_object_or_404(User, pk=user_id, role__in=["instructor", "admin"])
+    earn = instructor_earnings(instructor)
+    try:
+        amount = round(float(request.POST.get("amount") or earn["balance"]), 2)
+    except (TypeError, ValueError):
+        amount = 0
+    if amount <= 0:
+        messages.error(request, "Enter a payout amount greater than zero.")
+        return redirect("trainers:payouts")
+    payout = Payout.objects.create(
+        instructor=instructor,
+        amount=amount,
+        status=Payout.Status.PAID,
+        note=(request.POST.get("note") or "").strip(),
+        created_by=request.user,
+    )
+    payout.mark_paid()
+    messages.success(request, f"Recorded ₹{amount:,.0f} payout to {instructor.display_name}.")
+    return redirect("trainers:payouts")
 
 
 @trainer_required
