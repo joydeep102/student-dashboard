@@ -9,6 +9,12 @@
     <meta name="referrer" content="same-origin">
     <title>{% block title %}Fighter Bull's — Student Portal{% endblock %}</title>
     <link rel="icon" type="image/png" href="{% static 'images/logo.png' %}">
+    
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
     {% block head_extra %}{% endblock %}
@@ -22,27 +28,91 @@
         </a>
         <input type="checkbox" id="navtoggle" class="nav-toggle" hidden>
         <label for="navtoggle" class="nav-burger" aria-label="Menu"><span></span><span></span><span></span></label>
+        
         <nav class="topnav" id="mainnav">
-            <a href="{% url 'courses:dashboard' %}">Dashboard</a>
-            <a href="{% url 'courses:catalog' %}">Courses</a>
-            <a href="{% url 'courses:pricing' %}">Plans</a>
-            {% if user.role == 'student' and hw_has %}<a href="{% url 'homework:student_list' %}">📝 Homework{% if hw_pending %} <span class="nav-badge">{{ hw_pending }}</span>{% endif %}</a>{% endif %}
-            {% if user.role == 'instructor' or user.is_superuser %}<a href="{% url 'trainers:dashboard' %}">🎬 Trainer Studio</a>
-            <a href="{% url 'trainers:courses' %}">📚 My Courses</a>
-            <a href="{% url 'homework:trainer_list' %}">📝 Homework</a>{% endif %}
-            {% if user.is_staff %}<a href="{% url 'trainers:payouts' %}">💰 Payouts</a>{% endif %}
-            <a class="mob-link" href="{% url 'accounts:profile' %}">My Profile</a>
-            {% if user.is_staff %}<a href="/admin/">Admin</a>{% endif %}
+            <a href="{% url 'courses:dashboard' %}">
+                <i data-lucide="layout-dashboard" class="nav-icon"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{% url 'courses:catalog' %}">
+                <i data-lucide="book-open" class="nav-icon"></i>
+                <span>Courses</span>
+            </a>
+            <a href="{% url 'courses:pricing' %}">
+                <i data-lucide="credit-card" class="nav-icon"></i>
+                <span>Plans</span>
+            </a>
+            {% if user.role == 'student' and hw_has %}
+            <a href="{% url 'homework:student_list' %}">
+                <i data-lucide="file-check-2" class="nav-icon"></i>
+                <span>Homework</span>
+                {% if hw_pending %}
+                <span class="nav-badge">{{ hw_pending }}</span>
+                {% endif %}
+            </a>
+            {% endif %}
+
+            {% if user.role == 'instructor' or user.is_superuser or user.is_staff %}
+            <div class="nav-dropdown">
+                <button class="nav-dropdown-toggle" type="button">
+                    <i data-lucide="sliders" class="nav-icon"></i>
+                    <span>Management</span>
+                    <i data-lucide="chevron-down" class="chevron-icon"></i>
+                </button>
+                <div class="nav-dropdown-menu">
+                    {% if user.role == 'instructor' or user.is_superuser %}
+                    <a href="{% url 'trainers:dashboard' %}">
+                        <i data-lucide="monitor-play" class="nav-icon"></i>
+                        <span>Trainer Studio</span>
+                    </a>
+                    <a href="{% url 'trainers:courses' %}">
+                        <i data-lucide="graduation-cap" class="nav-icon"></i>
+                        <span>My Courses</span>
+                    </a>
+                    <a href="{% url 'homework:trainer_list' %}">
+                        <i data-lucide="file-check" class="nav-icon"></i>
+                        <span>Homework</span>
+                    </a>
+                    {% endif %}
+                    {% if user.is_staff %}
+                    <a href="{% url 'trainers:payouts' %}">
+                        <i data-lucide="banknote" class="nav-icon"></i>
+                        <span>Payouts</span>
+                    </a>
+                    <a href="/admin/">
+                        <i data-lucide="shield-check" class="nav-icon"></i>
+                        <span>Admin</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Mobile-only links -->
+            <a class="mob-link" href="{% url 'accounts:profile' %}">
+                <i data-lucide="user" class="nav-icon"></i>
+                <span>My Profile</span>
+            </a>
             <form action="{% url 'accounts:logout' %}" method="post" class="logout-form mob-link">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-ghost btn-sm btn-block">Logout</button>
+                <button type="submit" class="btn btn-ghost btn-sm btn-block">
+                    <i data-lucide="log-out" class="nav-icon"></i>
+                    <span>Logout</span>
+                </button>
             </form>
         </nav>
+        
         <div class="topbar-user">
-            <a href="{% url 'accounts:profile' %}" class="user-chip">{{ user.display_name }}</a>
+            <a href="{% url 'accounts:profile' %}" class="user-chip">
+                <i data-lucide="user" class="user-avatar-icon"></i>
+                <span>{{ user.display_name }}</span>
+            </a>
             <form action="{% url 'accounts:logout' %}" method="post" class="logout-form">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-ghost btn-sm">Logout</button>
+                <button type="submit" class="btn btn-ghost btn-sm btn-logout">
+                    <i data-lucide="log-out" class="nav-logout-icon"></i>
+                    <span>Logout</span>
+                </button>
             </form>
         </div>
     </div>
@@ -76,6 +146,14 @@
 <footer class="footer">
     <div class="footer-inner">© {% now "Y" %} Fighter Bull's — Trade Smarter, Not Harder. All rights reserved.</div>
 </footer>
+
+<!-- Lucide Icons CDN -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+    lucide.createIcons();
+</script>
+
 {% block body_extra %}{% endblock %}
 </body>
 </html>
+
