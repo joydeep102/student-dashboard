@@ -63,7 +63,7 @@ class Command(BaseCommand):
         instructor, _ = User.objects.get_or_create(
             email="instructor1@example.com",
             defaults={"username": "instructor1", "role": User.Role.INSTRUCTOR,
-                      "first_name": "Anita", "last_name": "Rao", "is_staff": True},
+                      "first_name": "Anita", "last_name": "Rao", "is_staff": False},
         )
         instructor.set_password("trainer12345")
         instructor.save()

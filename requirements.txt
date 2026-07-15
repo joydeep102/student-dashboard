@@ -8,7 +8,7 @@ whitenoise==6.8.2
 gunicorn==23.0.0
 
 # PostgreSQL driver (used when POSTGRES_DB is set; psycopg 3)
-psycopg[binary]==3.2.3
+psycopg[binary]>=3.2.3
 
 # Google Meet / Calendar + YouTube upload + Sign in with Google
 google-api-python-client==2.197.0

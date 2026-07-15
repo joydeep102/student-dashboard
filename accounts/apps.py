@@ -15,13 +15,17 @@ class AccountsConfig(AppConfig):
 
         def index_with_dashboard(request, extra_context=None):
             from django.contrib.auth import get_user_model
+            User = get_user_model()
+            if request.user.is_authenticated and request.user.role == User.Role.INSTRUCTOR:
+                from django.shortcuts import redirect
+                return redirect("trainers:dashboard")
+
             from django.utils import timezone
 
             from classroom.models import LiveClass
             from courses.models import Batch, BatchEnrollment, Lesson
             from trainers.models import VideoSubmission
 
-            User = get_user_model()
             now = timezone.now()
 
             extra_context = extra_context or {}

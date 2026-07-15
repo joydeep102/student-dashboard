@@ -74,7 +74,7 @@
                         <span>Homework</span>
                     </a>
                     {% endif %}
-                    {% if user.is_staff %}
+                    {% if user.role == 'admin' or user.is_superuser %}
                     <a href="{% url 'trainers:payouts' %}">
                         <i data-lucide="banknote" class="nav-icon"></i>
                         <span>Payouts</span>

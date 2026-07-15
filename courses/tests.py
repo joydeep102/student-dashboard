@@ -553,6 +553,14 @@ class CourseStudioTests(RecordedCourseData):
         )
         self.assertEqual(res.status_code, 403)
 
+    def test_instructor_redirected_from_admin(self):
+        self.instructor.is_staff = True
+        self.instructor.save()
+        self.client.force_login(self.instructor)
+        res = self.client.get(reverse("admin:index"))
+        self.assertRedirects(res, reverse("trainers:dashboard"))
+
+
 
 @override_settings(RAZORPAY_WEBHOOK_SECRET="whsec")
 class WebhookTests(BaseData):
