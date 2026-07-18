@@ -53,27 +53,29 @@
         try { d = JSON.parse(el.textContent); } catch (e) { return; }
 
         Chart.defaults.font.family =
-            "'Segoe UI', system-ui, -apple-system, sans-serif";
-        Chart.defaults.color = "#6b7280";
+            "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif";
+        Chart.defaults.color = "#64748b";
 
         var enroll = document.getElementById("chEnroll");
         if (enroll && d.enroll_counts) {
             var ctx = enroll.getContext("2d");
             var grad = ctx.createLinearGradient(0, 0, 0, 240);
-            grad.addColorStop(0, "rgba(25,176,54,.28)");
-            grad.addColorStop(1, "rgba(25,176,54,0)");
+            grad.addColorStop(0, "rgba(16, 185, 129, 0.26)");
+            grad.addColorStop(1, "rgba(16, 185, 129, 0)");
             new Chart(enroll, {
                 type: "line",
                 data: {
                     labels: d.enroll_labels,
                     datasets: [{
                         data: d.enroll_counts,
-                        borderColor: "#19b036",
+                        borderColor: "#10b981",
                         backgroundColor: grad,
                         borderWidth: 3,
                         fill: true,
                         tension: 0.4,
-                        pointBackgroundColor: "#19b036",
+                        pointBackgroundColor: "#059669",
+                        pointBorderColor: "#ffffff",
+                        pointBorderWidth: 1.5,
                         pointRadius: 4,
                         pointHoverRadius: 6,
                     }],
@@ -84,7 +86,7 @@
                     plugins: { legend: { display: false } },
                     scales: {
                         y: { beginAtZero: true, ticks: { precision: 0 },
-                             grid: { color: "#eef1f6" } },
+                             grid: { color: "#f1f5f9" } },
                         x: { grid: { display: false } },
                     },
                 },
@@ -99,14 +101,14 @@
                     labels: d.plan_labels,
                     datasets: [{
                         data: d.plan_counts,
-                        backgroundColor: ["#19b036", "#4cc466", "#a3e635", "#0a7d20", "#7cb305", "#16a34a"],
+                        backgroundColor: ["#059669", "#10b981", "#34d399", "#6ee7b7", "#86efac", "#a7f3d0"],
                         borderWidth: 0,
                     }],
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: "62%",
+                    cutout: "70%",
                     plugins: { legend: { position: "right", labels: { boxWidth: 12, padding: 14 } } },
                 },
             });

@@ -2,59 +2,259 @@
 {% block title %}Sales — {{ course.title }}{% endblock %}
 
 {% block content %}
-<div style="max-width:820px; margin:0 auto;">
-    <a href="{% url 'trainers:courses' %}" class="card-meta">← My Courses</a>
-    <h1 style="margin-top:6px;">Sales — {{ course.title }}</h1>
+<style>
+    /* Trainer Studio Typography & Accents */
+    .studio-header {
+        margin-bottom: 24px;
+    }
+    .studio-title {
+        font-size: 2.1rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: #0f172a;
+        margin: 0;
+    }
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #64748b;
+        text-decoration: none;
+        font-size: 0.88rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+        transition: color 0.15s ease;
+    }
+    .back-link:hover {
+        color: #10b981;
+    }
 
-    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:16px 0;">
-        <div class="card" style="text-align:center;">
-            <div style="font-size:1.6rem; font-weight:700;">₹{{ stats.revenue|floatformat:0 }}</div>
-            <div class="card-meta">Earnings</div>
+    /* Studio Metrics grid */
+    .studio-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .studio-stat-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .studio-stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        border-color: #cbd5e1;
+    }
+    .studio-stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ecfdf5;
+        color: #10b981;
+        flex-shrink: 0;
+    }
+    .studio-stat-icon svg {
+        width: 22px;
+        height: 22px;
+        stroke-width: 2.25;
+    }
+    .studio-stat-icon.alert {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    .studio-stat-info {
+        display: flex;
+        flex-direction: column;
+    }
+    .studio-stat-value {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.2;
+    }
+    .studio-stat-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-top: 2px;
+    }
+
+    /* Payout Table container card */
+    .studio-table-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        margin-bottom: 24px;
+        overflow-x: auto;
+    }
+    .studio-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 600px;
+    }
+    .studio-table th {
+        background: #f8fafc;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.72rem;
+        padding: 14px 16px;
+        border-bottom: 2px solid #e2e8f0;
+        text-align: left;
+    }
+    .studio-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.88rem;
+        color: #0f172a;
+        vertical-align: middle;
+    }
+    .studio-table tr:hover td {
+        background: #f8fafc;
+    }
+    .studio-table tr:last-child td {
+        border-bottom: none;
+    }
+    .status-badge {
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
+        letter-spacing: 0.02em;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .status-badge.paid {
+        background: #dcfce7;
+        color: #15803d;
+    }
+    .status-badge.pending {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    .status-badge.other {
+        background: #f1f5f9;
+        color: #475569;
+    }
+    .contact-meta {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin-top: 2px;
+    }
+</style>
+
+<div style="max-width:820px; margin:0 auto;">
+    <a href="{% url 'trainers:courses' %}" class="back-link">
+        <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>
+        <span>Back to My Courses</span>
+    </a>
+    
+    <div class="studio-header">
+        <h1 class="studio-title">Sales — {{ course.title }}</h1>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="studio-stats">
+        <div class="studio-stat-card">
+            <div class="studio-stat-icon">
+                <i data-lucide="wallet"></i>
+            </div>
+            <div class="studio-stat-info">
+                <span class="studio-stat-value">₹{{ stats.revenue|floatformat:0 }}</span>
+                <span class="studio-stat-label">Earnings</span>
+            </div>
         </div>
-        <div class="card" style="text-align:center;">
-            <div style="font-size:1.6rem; font-weight:700;">{{ stats.sales }}</div>
-            <div class="card-meta">Paid sales</div>
+        <div class="studio-stat-card">
+            <div class="studio-stat-icon">
+                <i data-lucide="shopping-bag"></i>
+            </div>
+            <div class="studio-stat-info">
+                <span class="studio-stat-value">{{ stats.sales }}</span>
+                <span class="studio-stat-label">Paid sales</span>
+            </div>
         </div>
-        <div class="card" style="text-align:center;">
-            <div style="font-size:1.6rem; font-weight:700; {% if stats.pending %}color:var(--warning,#b7791f);{% endif %}">{{ stats.pending }}</div>
-            <div class="card-meta">Pending verify</div>
+        <div class="studio-stat-card">
+            <div class="studio-stat-icon {% if stats.pending %}alert{% endif %}">
+                <i data-lucide="alert-circle"></i>
+            </div>
+            <div class="studio-stat-info">
+                <span class="studio-stat-value" {% if stats.pending %}style="color:#d97706;"{% endif %}>{{ stats.pending }}</span>
+                <span class="studio-stat-label">Pending verify</span>
+            </div>
         </div>
     </div>
 
-    <div class="card" style="overflow-x:auto;">
-        <table style="width:100%; border-collapse:collapse; min-width:560px;">
+    <!-- Payments Table -->
+    <div class="studio-table-card">
+        <table class="studio-table">
             <thead>
-                <tr style="text-align:left; border-bottom:1px solid var(--border);">
-                    <th style="padding:8px;">Student</th>
-                    <th style="padding:8px;">Contact</th>
-                    <th style="padding:8px;">Amount</th>
-                    <th style="padding:8px;">Method</th>
-                    <th style="padding:8px;">Status</th>
-                    <th style="padding:8px;">Date</th>
+                <tr>
+                    <th>Student</th>
+                    <th>Contact Info</th>
+                    <th>Amount</th>
+                    <th>Payment Method</th>
+                    <th>Status</th>
+                    <th>Date</th>
                 </tr>
             </thead>
             <tbody>
                 {% for p in payments %}
-                <tr style="border-bottom:1px solid var(--border);">
-                    <td style="padding:8px;">{{ p.student.display_name }}</td>
-                    <td style="padding:8px;" class="card-meta">{{ p.student.email }}<br>{{ p.student.phone }}</td>
-                    <td style="padding:8px;">₹{{ p.amount|floatformat:0 }}</td>
-                    <td style="padding:8px;" class="card-meta">{{ p.get_method_display }}</td>
-                    <td style="padding:8px;">
-                        {% if p.status == 'paid' %}<span style="color:var(--success,#16a34a);">✓ Paid</span>
-                        {% elif p.status == 'pending' %}<span style="color:var(--warning,#b7791f);">⏳ Pending</span>
-                        {% else %}<span class="card-meta">{{ p.get_status_display }}</span>{% endif %}
+                <tr>
+                    <td style="font-weight:600;">{{ p.student.display_name }}</td>
+                    <td>
+                        <div>{{ p.student.email }}</div>
+                        <div class="contact-meta">{{ p.student.phone }}</div>
                     </td>
-                    <td style="padding:8px;" class="card-meta">{{ p.created_at|date:"d M Y" }}</td>
+                    <td style="font-weight:700;">₹{{ p.amount|floatformat:0 }}</td>
+                    <td style="color:#64748b; font-weight:500;">{{ p.get_method_display }}</td>
+                    <td>
+                        {% if p.status == 'paid' %}
+                        <span class="status-badge paid">
+                            <i data-lucide="check" style="width:12px; height:12px;"></i>
+                            <span>Paid</span>
+                        </span>
+                        {% elif p.status == 'pending' %}
+                        <span class="status-badge pending">
+                            <i data-lucide="clock" style="width:12px; height:12px;"></i>
+                            <span>Pending</span>
+                        </span>
+                        {% else %}
+                        <span class="status-badge other">{{ p.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="color:#64748b;">{{ p.created_at|date:"d M Y" }}</td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="6" style="padding:16px; text-align:center; color:var(--muted);">No sales yet.</td></tr>
+                <tr>
+                    <td colspan="6" style="padding:32px; text-align:center; color:#94a3b8;">
+                        <i data-lucide="help-circle" style="width:32px; height:32px; margin-bottom:8px; display:block; margin-left:auto; margin-right:auto; opacity:0.6;"></i>
+                        <span>No sales registered for this course yet.</span>
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-    <p class="card-meta" style="margin-top:12px;">
-        Manual-UPI payments show as ⏳ Pending until an admin verifies them.
+    
+    <p style="font-size:0.84rem; color:#64748b; margin-top:12px; display:flex; align-items:center; gap:6px;">
+        <i data-lucide="help-circle" style="width:16px; height:16px;"></i>
+        <span>Manual-UPI payments show as ⏳ Pending until verified by an admin.</span>
     </p>
 </div>
 {% endblock %}

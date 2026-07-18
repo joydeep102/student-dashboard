@@ -3,6 +3,295 @@
 {% block title %}{{ lecture.title }} — {{ course.title }}{% endblock %}
 
 {% block content %}
+<style>
+    /* Premium Q&A Section Styling */
+    .qa-section {
+        margin-top: 32px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .qa-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 14px;
+    }
+    .qa-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    /* Ask Question Form */
+    .qa-form {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 24px;
+    }
+    .qa-textarea {
+        width: 100%;
+        min-height: 80px;
+        padding: 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.92rem;
+        resize: vertical;
+        box-sizing: border-box;
+        margin-bottom: 12px;
+        background: #ffffff;
+    }
+    .qa-textarea:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+    }
+    .qa-form-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    /* Voice Recorder UI */
+    .voice-recorder {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .btn-voice {
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #475569;
+        transition: all 0.15s;
+    }
+    .btn-voice:hover {
+        background: #f8fafc;
+        border-color: #94a3b8;
+        color: #0f172a;
+    }
+    .btn-voice.recording {
+        background: #fef2f2;
+        border-color: #fca5a5;
+        color: #dc2626;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.6; }
+        100% { opacity: 1; }
+    }
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #dc2626;
+    }
+
+    /* Custom File Input wrapper */
+    .file-input-wrapper {
+        position: relative;
+    }
+    .file-input-btn {
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #475569;
+        transition: all 0.15s;
+    }
+    .file-input-btn:hover {
+        background: #f8fafc;
+        border-color: #94a3b8;
+        color: #0f172a;
+    }
+    .hidden-file-input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    /* Button Studio overrides */
+    .btn-studio {
+        padding: 8px 16px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.15s;
+        text-decoration: none;
+    }
+    .btn-studio.primary {
+        background: #10b981;
+        color: #ffffff;
+    }
+    .btn-studio.primary:hover {
+        background: #059669;
+    }
+    .btn-studio.secondary {
+        background: transparent;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+    }
+    .btn-studio.secondary:hover {
+        background: #f8fafc;
+        color: #0f172a;
+    }
+    .btn-studio.danger {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fca5a5;
+    }
+    .btn-studio.danger:hover {
+        background: #fee2e2;
+    }
+
+    /* Q&A Thread List */
+    .question-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: #ffffff;
+    }
+    .qa-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 600;
+    }
+    .qa-user {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #1e293b;
+    }
+    .user-avatar-placeholder {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #e2e8f0;
+        color: #475569;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.75rem;
+    }
+    .qa-body {
+        font-size: 0.94rem;
+        color: #0f172a;
+        line-height: 1.5;
+        margin-bottom: 12px;
+    }
+    .qa-audio-player {
+        margin: 8px 0;
+        display: block;
+    }
+    .qa-audio-player audio {
+        height: 36px;
+        max-width: 100%;
+    }
+    .qa-attachment-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: #f1f5f9;
+        color: #334155;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-decoration: none;
+        margin-top: 6px;
+        border: 1px solid #e2e8f0;
+        transition: all 0.15s;
+    }
+    .qa-attachment-link:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+    }
+
+    /* Replies view */
+    .replies-section {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid #f1f5f9;
+        padding-left: 20px;
+        border-left: 2px solid #e2e8f0;
+    }
+    .reply-card {
+        margin-bottom: 12px;
+    }
+    .trainer-badge {
+        background: #dcfce7;
+        color: #15803d;
+        font-size: 0.65rem;
+        font-weight: 800;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    
+    /* Toggle replies input trigger */
+    .btn-reply-toggle {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #10b981;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: none;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: background 0.15s;
+        margin-top: 6px;
+    }
+    .btn-reply-toggle:hover {
+        background: #ecfdf5;
+    }
+</style>
+
 <div style="margin-bottom:16px;">
     <a href="{% url 'courses:course' course.slug %}" class="card-meta">← {{ course.title }}</a>
     <h1 style="margin-top:6px;">{{ lecture.title }}</h1>
@@ -16,7 +305,7 @@
              data-resume="{{ resume_position }}"
              data-completed="{{ is_completed|yesno:'1,0' }}"
              data-csrf="{{ csrf_token }}">
-            <div class="loading">Loading player…</div>
+             <div class="loading">Loading player…</div>
         </div>
 
         {% if lecture.description %}
@@ -31,6 +320,191 @@
             <a class="btn btn-sm" href="{% url 'courses:learn' course.slug next_lecture.pk %}">Next →</a>
             {% endif %}
         </div>
+
+        {% if lecture.qa_enabled %}
+        <!-- Discussion & Q&A Board -->
+        <div class="qa-section">
+            <div class="qa-header">
+                <h3 class="qa-title">
+                    <i data-lucide="message-square" style="width:20px; height:20px; color:#10b981;"></i>
+                    <span>Discussion &amp; Q&amp;A</span>
+                </h3>
+                <span class="card-meta" style="font-weight:600;">{{ questions.count }} question{{ questions.count|pluralize }}</span>
+            </div>
+
+            <!-- Ask Question form -->
+            <form class="qa-form" method="post" action="{% url 'courses:add_question' course.slug lecture.pk %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <textarea name="text" placeholder="Ask a question about this lecture..." class="qa-textarea" required></textarea>
+                
+                <div class="qa-form-controls">
+                    <!-- Voice Recorder Widget -->
+                    <div class="voice-recorder" id="recorder-container-main">
+                        <button type="button" class="btn-voice" id="record-btn-main">
+                            <i data-lucide="mic"></i>
+                            <span id="record-text-main">Record Voice</span>
+                        </button>
+                        <div id="recorder-ui-main" style="display:none; align-items:center; gap:8px;">
+                            <div class="pulse-dot"></div>
+                            <span id="timer-main" style="font-weight:700; color:#dc2626; font-size:0.85rem;">0:00</span>
+                            <button type="button" class="btn-studio danger" id="stop-btn-main" style="padding:4px 8px; font-size:0.75rem;">Stop</button>
+                        </div>
+                        <div id="preview-ui-main" style="display:none; align-items:center; gap:8px;">
+                            <audio id="audio-preview-main" controls style="height:28px; max-width:160px;"></audio>
+                            <button type="button" class="btn-studio danger" id="delete-btn-main" style="padding:4px 8px; font-size:0.75rem;">Clear</button>
+                        </div>
+                        <input type="file" name="voice_message" id="voice-input-main" style="display:none;" accept="audio/*">
+                    </div>
+
+                    <!-- Attachment Upload -->
+                    <div class="file-input-wrapper">
+                        <label class="file-input-btn">
+                            <i data-lucide="paperclip" style="width:16px; height:16px;"></i>
+                            <span id="file-text-main">Attach File</span>
+                            <input type="file" name="attachment" class="hidden-file-input" onchange="document.getElementById('file-text-main').textContent = this.files[0].name">
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-studio primary" style="margin-left:auto;">
+                        <i data-lucide="send" style="width:16px; height:16px;"></i>
+                        <span>Ask Trainer</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Questions thread list -->
+            {% for q in questions %}
+            <div class="question-card">
+                <div class="qa-meta">
+                    <div class="qa-user">
+                        <div class="user-avatar-placeholder">
+                            {{ q.student.display_name|slice:":1"|upper }}
+                        </div>
+                        <span style="font-weight:700; font-size:0.9rem;">{{ q.student.display_name }}</span>
+                    </div>
+                    <span>{{ q.created_at|date:"d M Y, h:i A" }}</span>
+                </div>
+                
+                <div class="qa-body">
+                    {{ q.text|linebreaksbr }}
+                    
+                    {% if q.voice_message %}
+                    <div class="qa-audio-player">
+                        <audio src="{{ q.voice_message.url }}" controls></audio>
+                    </div>
+                    {% endif %}
+
+                    {% if q.attachment %}
+                    <div>
+                        <a href="{{ q.attachment.url }}" download class="qa-attachment-link">
+                            <i data-lucide="file" style="width:14px; height:14px;"></i>
+                            <span>Download Attachment</span>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Action row (Reply toggle) -->
+                <button type="button" class="btn-reply-toggle" onclick="document.getElementById('reply-form-{{ q.pk }}').style.display = document.getElementById('reply-form-{{ q.pk }}').style.display === 'none' ? 'block' : 'none'">
+                    <i data-lucide="reply" style="width:14px; height:14px;"></i>
+                    <span>Reply</span>
+                </button>
+
+                <!-- Replies view section -->
+                <div class="replies-section">
+                    {% for r in q.replies.all %}
+                    <div class="reply-card">
+                        <div class="qa-meta">
+                            <div class="qa-user">
+                                <div class="user-avatar-placeholder">
+                                    {{ r.user.display_name|slice:":1"|upper }}
+                                </div>
+                                <span style="font-weight:700; font-size:0.85rem;">{{ r.user.display_name }}</span>
+                                {% if r.user == course.instructor or r.user.role == 'instructor' or r.user.role == 'admin' %}
+                                <span class="trainer-badge">Trainer</span>
+                                {% endif %}
+                            </div>
+                            <span>{{ r.created_at|date:"d M, h:i A" }}</span>
+                        </div>
+                        <div class="qa-body" style="font-size:0.9rem; margin-bottom:8px;">
+                            {{ r.text|linebreaksbr }}
+                            
+                            {% if r.voice_message %}
+                            <div class="qa-audio-player">
+                                <audio src="{{ r.voice_message.url }}" controls></audio>
+                            </div>
+                            {% endif %}
+
+                            {% if r.attachment %}
+                            <div>
+                                <a href="{{ r.attachment.url }}" download class="qa-attachment-link">
+                                    <i data-lucide="file" style="width:12px; height:12px;"></i>
+                                    <span>Download Attachment</span>
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">No replies yet.</div>
+                    {% endfor %}
+
+                    <!-- Reply Form (collapsed by default) -->
+                    <form id="reply-form-{{ q.pk }}" style="display:none; margin-top:14px;" method="post" action="{% url 'courses:add_reply' course.slug q.pk %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <textarea name="text" placeholder="Write a reply..." class="qa-textarea" required></textarea>
+                        
+                        <div class="qa-form-controls">
+                            <!-- Voice Recorder Widget for Reply -->
+                            <div class="voice-recorder" id="recorder-container-reply-{{ q.pk }}">
+                                <button type="button" class="btn-voice" id="record-btn-reply-{{ q.pk }}">
+                                    <i data-lucide="mic"></i>
+                                    <span id="record-text-reply-{{ q.pk }}">Record Voice</span>
+                                </button>
+                                <div id="recorder-ui-reply-{{ q.pk }}" style="display:none; align-items:center; gap:8px;">
+                                    <div class="pulse-dot"></div>
+                                    <span id="timer-reply-{{ q.pk }}" style="font-weight:700; color:#dc2626; font-size:0.85rem;">0:00</span>
+                                    <button type="button" class="btn-studio danger" id="stop-btn-reply-{{ q.pk }}" style="padding:4px 8px; font-size:0.75rem;">Stop</button>
+                                </div>
+                                <div id="preview-ui-reply-{{ q.pk }}" style="display:none; align-items:center; gap:8px;">
+                                    <audio id="audio-preview-reply-{{ q.pk }}" controls style="height:28px; max-width:160px;"></audio>
+                                    <button type="button" class="btn-studio danger" id="delete-btn-reply-{{ q.pk }}" style="padding:4px 8px; font-size:0.75rem;">Clear</button>
+                                </div>
+                                <input type="file" name="voice_message" id="voice-input-reply-{{ q.pk }}" style="display:none;" accept="audio/*">
+                            </div>
+
+                            <div class="file-input-wrapper">
+                                <label class="file-input-btn">
+                                    <i data-lucide="paperclip" style="width:16px; height:16px;"></i>
+                                    <span id="file-text-reply-{{ q.pk }}">Attach File</span>
+                                    <input type="file" name="attachment" class="hidden-file-input" onchange="document.getElementById('file-text-reply-{{ q.pk }}').textContent = this.files[0].name">
+                                </label>
+                            </div>
+
+                            <button type="submit" class="btn-studio primary" style="margin-left:auto; padding: 6px 12px; font-size:0.8rem;">
+                                <span>Reply</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div style="text-align:center; padding:32px; color:#94a3b8;">
+                <i data-lucide="help-circle" style="width:36px; height:36px; margin-bottom:8px; display:block; margin-left:auto; margin-right:auto; opacity:0.6;"></i>
+                <div style="font-weight:700;">No questions yet</div>
+                <div style="font-size:0.85rem;">Be the first to ask a question to the trainer!</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Q&A Disabled Notice -->
+        <div style="margin-top:32px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:16px; padding:28px; text-align:center;">
+            <i data-lucide="message-square-off" style="width:36px; height:36px; color:#94a3b8; margin-bottom:10px; display:block; margin-left:auto; margin-right:auto;"></i>
+            <div style="font-weight:700; color:#475569; font-size:1rem; margin-bottom:4px;">Q&amp;A Disabled for this Lecture</div>
+            <div style="font-size:0.85rem; color:#94a3b8;">The trainer has turned off discussion for this video. Questions are not available here.</div>
+        </div>
+        {% endif %}
+   </div>
     </div>
 
     <aside class="playlist">
@@ -60,6 +534,99 @@
         {% endfor %}
     </aside>
 </div>
+
+<script>
+    // Universal Voice Recording Logic using HTML5 MediaRecorder API
+    function setupVoiceRecorder(containerId) {
+        var recordBtn = document.getElementById('record-btn-' + containerId);
+        var stopBtn = document.getElementById('stop-btn-' + containerId);
+        var deleteBtn = document.getElementById('delete-btn-' + containerId);
+        var recorderUi = document.getElementById('recorder-ui-' + containerId);
+        var previewUi = document.getElementById('preview-ui-' + containerId);
+        var audioPreview = document.getElementById('audio-preview-' + containerId);
+        var voiceInput = document.getElementById('voice-input-' + containerId);
+        var timerSpan = document.getElementById('timer-' + containerId);
+        var recordText = document.getElementById('record-text-' + containerId);
+
+        var mediaRecorder = null;
+        var audioChunks = [];
+        var timerInterval = null;
+        var startTime = null;
+
+        if (!recordBtn) return;
+
+        recordBtn.addEventListener('click', function() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function(stream) {
+                    audioChunks = [];
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.addEventListener('dataavailable', function(event) {
+                        audioChunks.push(event.data);
+                    });
+
+                    mediaRecorder.addEventListener('stop', function() {
+                        var audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        var audioUrl = URL.createObjectURL(audioBlob);
+                        audioPreview.src = audioUrl;
+
+                        // Create file object and attach to the file input
+                        var file = new File([audioBlob], 'voice_message.webm', { type: 'audio/webm' });
+                        var container = new DataTransfer();
+                        container.items.add(file);
+                        voiceInput.files = container.files;
+
+                        // UI Switch
+                        recorderUi.style.display = 'none';
+                        previewUi.style.display = 'flex';
+                        
+                        // Stop all audio tracks to release microphone
+                        stream.getTracks().forEach(track => track.stop());
+                    });
+
+                    // Start Recording UI
+                    recordBtn.style.display = 'none';
+                    recorderUi.style.display = 'flex';
+                    previewUi.style.display = 'none';
+
+                    // Start Timer
+                    startTime = Date.now();
+                    timerSpan.textContent = '0:00';
+                    timerInterval = setInterval(function() {
+                        var elapsed = Math.floor((Date.now() - startTime) / 1000);
+                        var m = Math.floor(elapsed / 60);
+                        var s = elapsed % 60;
+                        timerSpan.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+                    }, 1000);
+
+                    mediaRecorder.start();
+                })
+                .catch(function(err) {
+                    alert('Microphone access is required to record voice messages.');
+                });
+        });
+
+        stopBtn.addEventListener('click', function() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                clearInterval(timerInterval);
+            }
+        });
+
+        deleteBtn.addEventListener('click', function() {
+            audioPreview.src = '';
+            voiceInput.value = '';
+            previewUi.style.display = 'none';
+            recordBtn.style.display = 'inline-flex';
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        setupVoiceRecorder('main');
+        {% for q in questions %}
+        setupVoiceRecorder('reply-{{ q.pk }}');
+        {% endfor %}
+    });
+</script>
 {% endblock %}
 
 {% block body_extra %}

@@ -22,7 +22,7 @@ from .access import (
     preview_count,
     unlocked_lecture_ids,
 )
-from .models import CourseEnrollment, CoursePayment, Lecture, LectureProgress, RecordedCourse
+from .models import CourseEnrollment, CoursePayment, Lecture, LectureProgress, RecordedCourse, LectureQuestion, LectureReply
 from .payment_config import payment_config
 from .views import _qr_data_uri, _register_student, _upi_links
 
@@ -139,6 +139,8 @@ def learn(request, slug, pk):
     watchable = [lec for lec in ordered if lec.id in unlocked]
     idx = next((i for i, lec in enumerate(watchable) if lec.pk == lecture.pk), 0)
 
+    questions = LectureQuestion.objects.filter(lecture=lecture).select_related("student").prefetch_related("replies__user").order_by("-created_at")
+
     return render(
         request,
         "courses/learn.html",
@@ -151,8 +153,70 @@ def learn(request, slug, pk):
             "is_completed": is_completed,
             "prev_lecture": watchable[idx - 1] if idx > 0 else None,
             "next_lecture": watchable[idx + 1] if idx < len(watchable) - 1 else None,
+            "questions": questions,
         },
     )
+
+
+@login_required
+@require_POST
+def add_question(request, slug, pk):
+    course = _published_course(slug)
+    lecture = get_object_or_404(Lecture, pk=pk, section__course=course)
+    enrollment = get_course_enrollment(request.user, course)
+
+    if not can_watch_lecture(request.user, lecture, enrollment):
+        return HttpResponseBadRequest("Not enrolled or authorized.")
+
+    text = request.POST.get("text", "").strip()
+    attachment = request.FILES.get("attachment")
+    voice_message = request.FILES.get("voice_message")
+
+    if not text and not attachment and not voice_message:
+        messages.error(request, "Cannot submit an empty question.")
+    else:
+        LectureQuestion.objects.create(
+            student=request.user,
+            lecture=lecture,
+            text=text,
+            attachment=attachment,
+            voice_message=voice_message,
+        )
+        messages.success(request, "Your question has been posted to the trainer.")
+
+    return redirect("courses:learn", slug=slug, pk=pk)
+
+
+@login_required
+@require_POST
+def add_reply(request, slug, qpk):
+    course = _published_course(slug)
+    question = get_object_or_404(LectureQuestion, pk=qpk, lecture__section__course=course)
+    lecture = question.lecture
+    enrollment = get_course_enrollment(request.user, course)
+
+    is_instructor = request.user == course.instructor or request.user.role in ["instructor", "admin"]
+    if not is_instructor and not can_watch_lecture(request.user, lecture, enrollment):
+        return HttpResponseBadRequest("Not authorized to reply.")
+
+    text = request.POST.get("text", "").strip()
+    attachment = request.FILES.get("attachment")
+    voice_message = request.FILES.get("voice_message")
+
+    if not text and not attachment and not voice_message:
+        messages.error(request, "Cannot submit an empty reply.")
+    else:
+        LectureReply.objects.create(
+            question=question,
+            user=request.user,
+            text=text,
+            attachment=attachment,
+            voice_message=voice_message,
+        )
+        messages.success(request, "Reply submitted.")
+
+    return redirect("courses:learn", slug=slug, pk=lecture.pk)
+
 
 
 def lecture_source(request, slug, pk):

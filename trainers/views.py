@@ -3,6 +3,7 @@ from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
@@ -10,7 +11,7 @@ from django.utils import timezone
 
 from classroom.google_meet import ensure_meet_link
 from classroom.models import LiveClass
-from courses.models import Batch, BatchScheduleSlot, Plan
+from courses.models import Batch, BatchScheduleSlot, Plan, RecordedCourse, LectureQuestion, LectureReply, Lecture
 
 from .forms import VideoSubmissionForm
 from .models import VideoSubmission
@@ -295,3 +296,72 @@ def end_live(request, pk):
     lc.save(update_fields=["status"])
     messages.success(request, "Live class ended.")
     return redirect("trainers:live")
+
+
+@trainer_required
+def qa_list(request):
+    is_admin = request.user.is_superuser or request.user.role == "admin"
+    if is_admin:
+        courses = RecordedCourse.objects.all()
+        questions = LectureQuestion.objects.select_related("student", "lecture", "lecture__section__course").prefetch_related("replies__user")
+    else:
+        courses = RecordedCourse.objects.filter(instructor=request.user)
+        questions = LectureQuestion.objects.filter(
+            lecture__section__course__instructor=request.user
+        ).select_related("student", "lecture", "lecture__section__course").prefetch_related("replies__user")
+
+    # Filter by course if selected
+    course_id = request.GET.get("course_id")
+    if course_id:
+        questions = questions.filter(lecture__section__course_id=course_id)
+
+    # Filter by reply status
+    status = request.GET.get("status")
+    if status == "unreplied":
+        questions = questions.filter(replies__isnull=True)
+    elif status == "replied":
+        questions = questions.filter(replies__isnull=False).distinct()
+
+    return render(
+        request,
+        "trainers/qa.html",
+        {
+            "questions": questions.order_by("-created_at"),
+            "courses": courses,
+            "selected_course": int(course_id) if course_id and course_id.isdigit() else None,
+            "selected_status": status,
+        },
+    )
+
+
+@trainer_required
+@require_POST
+def qa_reply(request, pk):
+    is_admin = request.user.is_superuser or request.user.role == "admin"
+    if is_admin:
+        question = get_object_or_404(LectureQuestion, pk=pk)
+    else:
+        question = get_object_or_404(
+            LectureQuestion,
+            pk=pk,
+            lecture__section__course__instructor=request.user
+        )
+
+    text = request.POST.get("text", "").strip()
+    attachment = request.FILES.get("attachment")
+    voice_message = request.FILES.get("voice_message")
+
+    if not text and not attachment and not voice_message:
+        messages.error(request, "Cannot submit an empty reply.")
+    else:
+        LectureReply.objects.create(
+            question=question,
+            user=request.user,
+            text=text,
+            attachment=attachment,
+            voice_message=voice_message,
+        )
+        messages.success(request, "Your reply has been posted.")
+
+    return redirect("trainers:qa_list")
+

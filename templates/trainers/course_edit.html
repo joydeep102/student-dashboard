@@ -2,144 +2,509 @@
 {% block title %}Edit {{ course.title }} — Course Studio{% endblock %}
 
 {% block content %}
+<style>
+    /* Trainer Studio Typography & Accents */
+    .studio-header {
+        margin-bottom: 24px;
+    }
+    .studio-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+    }
+    .studio-title {
+        font-size: 2.1rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: #0f172a;
+        margin: 0;
+    }
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #64748b;
+        text-decoration: none;
+        font-size: 0.88rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+        transition: color 0.15s ease;
+    }
+    .back-link:hover {
+        color: #10b981;
+    }
+    .status-badge {
+        font-size: 0.76rem;
+        font-weight: 700;
+        padding: 4px 12px;
+        border-radius: 999px;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+    .status-badge.published {
+        background: #dcfce7;
+        color: #15803d;
+    }
+    .status-badge.draft {
+        background: #e0f2fe;
+        color: #0369a1;
+    }
+    .studio-section-head {
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin: 32px 0 16px;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .studio-section-head::before {
+        content: "";
+        width: 4px;
+        height: 18px;
+        border-radius: 4px;
+        background: linear-gradient(180deg, #34d399, #10b981);
+    }
+
+    /* Form card layout */
+    .studio-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        margin-bottom: 24px;
+    }
+    .studio-card-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 0;
+        margin-bottom: 20px;
+    }
+    .studio-label {
+        font-size: 0.74rem;
+        font-weight: 800;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: block;
+        margin-bottom: 6px;
+    }
+    .studio-input, .studio-textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        font-size: 0.95rem;
+        box-sizing: border-box;
+        background: #ffffff;
+        color: #0f172a;
+        margin-bottom: 18px;
+        transition: all 0.15s ease;
+        font-family: inherit;
+    }
+    .studio-input:focus, .studio-textarea:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+    }
+    
+    /* Custom File Upload */
+    .file-upload-wrapper {
+        position: relative;
+        margin-bottom: 18px;
+    }
+    .file-upload-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 10px;
+        background: #f8fafc;
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .file-upload-label:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+        color: #0f172a;
+    }
+    .file-upload-input {
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+
+    /* Actions line */
+    .actions-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid #f1f5f9;
+    }
+    .btn-studio {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        border-radius: 10px;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.15s ease;
+    }
+    .btn-studio.primary {
+        background: #10b981;
+        color: #ffffff;
+    }
+    .btn-studio.primary:hover {
+        background: #059669;
+    }
+    .btn-studio.secondary {
+        background: transparent;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+    }
+    .btn-studio.secondary:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #94a3b8;
+    }
+    .btn-studio.danger {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fca5a5;
+    }
+    .btn-studio.danger:hover {
+        background: #fee2e2;
+        border-color: #ef4444;
+    }
+
+    /* Curriculum Details accordion */
+    .curriculum-section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid #f1f5f9;
+        margin-bottom: 14px;
+    }
+    .section-input-title {
+        flex: 1;
+        padding: 10px 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        background: #ffffff;
+        color: #0f172a;
+    }
+    .section-input-title:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+    }
+    .lecture-details {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        overflow: hidden;
+    }
+    .lecture-summary {
+        padding: 12px 16px;
+        background: #f8fafc;
+        cursor: pointer;
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 0.92rem;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .lecture-summary::-webkit-details-marker {
+        display: none;
+    }
+    .lecture-summary::after {
+        content: "\25B8";
+        margin-left: auto;
+        font-size: 0.75rem;
+        color: #94a3b8;
+        transition: transform 0.15s;
+    }
+    .lecture-details[open] .lecture-summary::after {
+        transform: rotate(90deg);
+        color: #10b981;
+    }
+    .lecture-body {
+        padding: 16px;
+        background: #ffffff;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    /* Add Lecture dropdown summary styling */
+    .add-lecture-details {
+        margin-top: 12px;
+    }
+    .add-lecture-summary {
+        cursor: pointer;
+        color: #10b981;
+        font-weight: 700;
+        font-size: 0.88rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        user-select: none;
+    }
+    .add-lecture-summary::-webkit-details-marker {
+        display: none;
+    }
+    .add-lecture-form {
+        margin-top: 12px;
+        padding: 16px;
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-radius: 10px;
+    }
+
+    /* Section Add Panel */
+    .section-add-form {
+        display: flex;
+        gap: 16px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+</style>
+
 <div style="max-width:820px; margin:0 auto;">
-    <a href="{% url 'trainers:courses' %}" class="card-meta">← My Courses</a>
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:6px;">
-        <h1 style="margin:0;">{{ course.title }}</h1>
-        <span class="card-meta">
-            {% if course.is_published %}● Published{% else %}○ Draft{% endif %}
-        </span>
+    <a href="{% url 'trainers:courses' %}" class="back-link">
+        <i data-lucide="arrow-left" style="width:16px; height:16px;"></i>
+        <span>Back to My Courses</span>
+    </a>
+    
+    <div class="studio-header">
+        <div class="studio-title-row">
+            <h1 class="studio-title">{{ course.title }}</h1>
+            <span class="status-badge {% if course.is_published %}published{% else %}draft{% endif %}">
+                {% if course.is_published %}Published{% else %}Draft{% endif %}
+            </span>
+        </div>
     </div>
 
-    <!-- Course details -->
-    <div class="card" style="margin:16px 0;">
-        <h3 style="margin-top:0;">Course details</h3>
+    <!-- Course Details Card -->
+    <div class="studio-card">
+        <h3 class="studio-card-title">Course details</h3>
+        
         <form method="post" action="{% url 'trainers:course_edit' course.slug %}" enctype="multipart/form-data">
             {% csrf_token %}
-            <label class="card-meta" for="title">Title</label>
-            <input id="title" name="title" value="{{ course.title }}" required
-                   style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">
-            <label class="card-meta" for="subtitle">Subtitle</label>
-            <input id="subtitle" name="subtitle" value="{{ course.subtitle }}"
-                   style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">
-            <label class="card-meta" for="description">Description</label>
-            <textarea id="description" name="description" rows="4"
-                      style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">{{ course.description }}</textarea>
-            <div style="display:flex; gap:14px; flex-wrap:wrap;">
+            
+            <label class="studio-label" for="title">Title</label>
+            <input id="title" name="title" value="{{ course.title }}" required class="studio-input">
+            
+            <label class="studio-label" for="subtitle">Subtitle</label>
+            <input id="subtitle" name="subtitle" value="{{ course.subtitle }}" class="studio-input">
+            
+            <label class="studio-label" for="description">Description</label>
+            <textarea id="description" name="description" rows="4" class="studio-textarea">{{ course.description }}</textarea>
+            
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
                 <div style="flex:1; min-width:140px;">
-                    <label class="card-meta" for="price">Price (₹)</label>
-                    <input id="price" name="price" type="number" min="0" value="{{ course.price|floatformat:0 }}"
-                           style="width:100%; padding:10px; margin:6px 0 12px; border:1px solid var(--border); border-radius:8px;">
+                    <label class="studio-label" for="price">Price (₹)</label>
+                    <input id="price" name="price" type="number" min="0" value="{{ course.price|floatformat:0 }}" class="studio-input">
                 </div>
                 <div style="flex:1; min-width:200px;">
-                    <label class="card-meta" for="thumbnail">Thumbnail</label>
-                    <input id="thumbnail" name="thumbnail" type="file" accept="image/*"
-                           style="width:100%; padding:8px 0; margin:6px 0 12px;">
+                    <label class="studio-label" for="thumbnail">Thumbnail</label>
+                    <div class="file-upload-wrapper">
+                        <label class="file-upload-label" for="thumbnail">
+                            <i data-lucide="image" style="width:18px; height:18px;"></i>
+                            <span id="file-label-text">{% if course.thumbnail %}Change thumbnail{% else %}Upload thumbnail image{% endif %}</span>
+                        </label>
+                        <input id="thumbnail" name="thumbnail" type="file" accept="image/*" class="file-upload-input" onchange="document.getElementById('file-label-text').textContent = this.files[0].name">
+                    </div>
                 </div>
             </div>
-            <button type="submit" class="btn">Save details</button>
+            
+            <button type="submit" class="btn-studio primary">
+                <i data-lucide="check" style="width:18px; height:18px;"></i>
+                <span>Save details</span>
+            </button>
         </form>
-        <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+        
+        <!-- Action items -->
+        <div class="actions-bar">
             <form method="post" action="{% url 'trainers:course_publish' course.slug %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-sm">{% if course.is_published %}Unpublish{% else %}Publish{% endif %}</button>
+                <button type="submit" class="btn-studio secondary">
+                    <i data-lucide="globe" style="width:16px; height:16px;"></i>
+                    <span>{% if course.is_published %}Unpublish course{% else %}Publish course{% endif %}</span>
+                </button>
             </form>
-            <a class="btn btn-ghost btn-sm" href="{% url 'courses:course' course.slug %}">View public page ↗</a>
+            
+            <a class="btn-studio secondary" href="{% url 'courses:course' course.slug %}" target="_blank">
+                <i data-lucide="external-link" style="width:16px; height:16px;"></i>
+                <span>View public page</span>
+            </a>
+            
             <form method="post" action="{% url 'trainers:course_delete' course.slug %}"
-                  onsubmit="return confirm('Delete this course and all its content?');" style="margin-left:auto;">
+                  onsubmit="return confirm('Are you sure you want to delete this course and all of its sections and lectures? This action is permanent.');" style="margin-left:auto;">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--danger,#dc2626);">Delete course</button>
+                <button type="submit" class="btn-studio danger">
+                    <i data-lucide="trash-2" style="width:16px; height:16px;"></i>
+                    <span>Delete course</span>
+                </button>
             </form>
         </div>
     </div>
 
-    <!-- Curriculum -->
-    <h3>Curriculum</h3>
+    <!-- Curriculum Header -->
+    <div class="studio-section-head">Curriculum</div>
+    
     {% for section in sections %}
-    <div class="card" style="margin-bottom:12px;">
-        <div style="display:flex; align-items:center; gap:10px;">
-            <form method="post" action="{% url 'trainers:section_edit' course.slug section.pk %}" style="flex:1; display:flex; gap:8px;">
+    <div class="studio-card">
+        <div class="curriculum-section-header">
+            <form method="post" action="{% url 'trainers:section_edit' course.slug section.pk %}" style="flex:1; display:flex; gap:10px;">
                 {% csrf_token %}
-                <input name="title" value="{{ section.title }}"
-                       style="flex:1; padding:8px; border:1px solid var(--border); border-radius:8px; font-weight:600;">
-                <button type="submit" class="btn btn-ghost btn-sm">Rename</button>
+                <input name="title" value="{{ section.title }}" required class="section-input-title">
+                <button type="submit" class="btn-studio secondary" style="padding: 8px 14px; font-size: 0.8rem;">Rename</button>
             </form>
+            
             <form method="post" action="{% url 'trainers:section_delete' course.slug section.pk %}"
-                  onsubmit="return confirm('Delete this section and its lectures?');">
+                  onsubmit="return confirm('Are you sure you want to delete this section and all of its lectures?');">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--danger,#dc2626);">✕</button>
+                <button type="submit" class="btn-studio danger" style="padding: 8px 14px; font-size: 0.8rem;">
+                    <i data-lucide="x" style="width:14px; height:14px;"></i>
+                </button>
             </form>
         </div>
 
-        <!-- Lectures in this section -->
-        <div style="margin:12px 0;">
+        <!-- Lectures List in this Section -->
+        <div style="margin:16px 0 8px 0;">
             {% for lec in section.lectures.all %}
-            <details style="border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-bottom:8px;">
-                <summary style="cursor:pointer;">
-                    {{ forloop.counter }}. {{ lec.title }}
-                    {% if lec.is_preview %}<span class="card-meta">· preview</span>{% endif %}
-                    {% if lec.duration_display %}<span class="card-meta">· {{ lec.duration_display }}</span>{% endif %}
+            <details class="lecture-details">
+                <summary class="lecture-summary">
+                    <i data-lucide="play-circle" style="width:18px; height:18px; color:#10b981; flex-shrink:0;"></i>
+                    <span>{{ forloop.counter }}. {{ lec.title }}</span>
+                    {% if lec.is_preview %}<span class="status-badge" style="background:#e0f2fe; color:#0369a1; font-size:0.65rem; padding: 2px 6px;">Free Preview</span>{% endif %}
+                    {% if lec.duration_display %}<span class="card-meta" style="margin-left:auto; font-size:0.8rem; font-weight:500;">⏱ {{ lec.duration_display }}</span>{% endif %}
                 </summary>
-                <form method="post" action="{% url 'trainers:lecture_edit' course.slug lec.pk %}" style="margin-top:10px;">
-                    {% csrf_token %}
-                    <label class="card-meta">Title</label>
-                    <input name="title" value="{{ lec.title }}" required
-                           style="width:100%; padding:8px; margin:4px 0 10px; border:1px solid var(--border); border-radius:8px;">
-                    <label class="card-meta">YouTube video id (unlisted)</label>
-                    <input name="youtube_id" value="{{ lec.youtube_id }}" required
-                           style="width:100%; padding:8px; margin:4px 0 10px; border:1px solid var(--border); border-radius:8px;">
-                    <label class="card-meta">Length (minutes)</label>
-                    <input name="duration_min" type="number" min="0" step="0.1" value="{{ lec.duration_seconds|floatformat:0|default:0 }}"
-                           style="width:100%; padding:8px; margin:4px 0 10px; border:1px solid var(--border); border-radius:8px;">
-                    <label style="display:block; margin:4px 0 10px;">
-                        <input type="checkbox" name="is_preview" {% if lec.is_preview %}checked{% endif %}> Free preview
-                    </label>
-                    <button type="submit" class="btn btn-sm">Save</button>
-                </form>
-                <form method="post" action="{% url 'trainers:lecture_delete' course.slug lec.pk %}"
-                      onsubmit="return confirm('Delete this lecture?');" style="margin-top:8px;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--danger,#dc2626);">Delete lecture</button>
-                </form>
+                
+                <div class="lecture-body">
+                    <form method="post" action="{% url 'trainers:lecture_edit' course.slug lec.pk %}">
+                        {% csrf_token %}
+                        <label class="studio-label">Title</label>
+                        <input name="title" value="{{ lec.title }}" required class="studio-input" style="margin-bottom:12px;">
+                        
+                        <label class="studio-label">YouTube Video ID (Unlisted)</label>
+                        <input name="youtube_id" value="{{ lec.youtube_id }}" required class="studio-input" style="margin-bottom:12px;">
+                        
+                        <label class="studio-label">Length (Minutes)</label>
+                        <input name="duration_min" type="number" min="0" step="0.1" value="{{ lec.duration_seconds|floatformat:0|default:0 }}" class="studio-input" style="margin-bottom:12px;">
+                        
+                        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; font-weight:600; color:#334155; cursor:pointer;">
+                                <input type="checkbox" name="is_preview" {% if lec.is_preview %}checked{% endif %} style="width:16px; height:16px; accent-color:#10b981;">
+                                <span>Enable Free Preview (anyone can watch)</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; font-weight:600; color:#334155; cursor:pointer;">
+                                <input type="checkbox" name="qa_enabled" {% if lec.qa_enabled %}checked{% endif %} style="width:16px; height:16px; accent-color:#10b981;">
+                                <span>Enable Q&amp;A Discussion for this lecture</span>
+                            </label>
+                        </div>
+                        
+                        <button type="submit" class="btn-studio primary" style="padding: 8px 16px; font-size: 0.85rem;">Save Changes</button>
+                    </form>
+                    
+                    <form method="post" action="{% url 'trainers:lecture_delete' course.slug lec.pk %}"
+                          onsubmit="return confirm('Are you sure you want to delete this lecture?');" style="margin-top:12px; border-top:1px solid #f1f5f9; padding-top:12px;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-studio danger" style="padding: 8px 16px; font-size: 0.85rem;">
+                            <i data-lucide="trash" style="width:14px; height:14px;"></i>
+                            <span>Delete lecture</span>
+                        </button>
+                    </form>
+                </div>
             </details>
             {% empty %}
-            <p class="card-meta">No lectures yet — add one below.</p>
+            <p class="card-meta" style="font-size:0.85rem; color:#94a3b8; display:flex; align-items:center; gap:6px;">
+                <i data-lucide="help-circle" style="width:16px; height:16px;"></i>
+                <span>No lectures added to this section yet. Add one below.</span>
+            </p>
             {% endfor %}
         </div>
 
-        <!-- Add lecture -->
-        <details style="margin-top:8px;">
-            <summary style="cursor:pointer; color:var(--accent,#16a34a);">+ Add lecture</summary>
-            <form method="post" action="{% url 'trainers:lecture_add' course.slug section.pk %}" style="margin-top:10px;">
+        <!-- Add Lecture Dropdown -->
+        <details class="add-lecture-details">
+            <summary class="add-lecture-summary">
+                <i data-lucide="plus-circle" style="width:16px; height:16px;"></i>
+                <span>Add Lecture</span>
+            </summary>
+            
+            <form method="post" action="{% url 'trainers:lecture_add' course.slug section.pk %}" class="add-lecture-form">
                 {% csrf_token %}
-                <input name="title" placeholder="Lecture title" required
-                       style="width:100%; padding:8px; margin:4px 0 8px; border:1px solid var(--border); border-radius:8px;">
-                <input name="youtube_id" placeholder="Unlisted YouTube video id (e.g. dQw4w9WgXcQ)" required
-                       style="width:100%; padding:8px; margin:4px 0 8px; border:1px solid var(--border); border-radius:8px;">
-                <input name="duration_min" type="number" min="0" step="0.1" placeholder="Length in minutes"
-                       style="width:100%; padding:8px; margin:4px 0 8px; border:1px solid var(--border); border-radius:8px;">
-                <label style="display:block; margin:4px 0 8px;">
-                    <input type="checkbox" name="is_preview"> Free preview (anyone can watch)
-                </label>
-                <button type="submit" class="btn btn-sm">Add lecture</button>
+                <label class="studio-label">Lecture Title</label>
+                <input name="title" placeholder="e.g. Introduction to Options Pricing" required class="studio-input" style="margin-bottom:10px;">
+                
+                <label class="studio-label">YouTube Video ID</label>
+                <input name="youtube_id" placeholder="Unlisted YouTube video id (e.g. dQw4w9WgXcQ)" required class="studio-input" style="margin-bottom:10px;">
+                
+                <label class="studio-label">Length (Minutes)</label>
+                <input name="duration_min" type="number" min="0" step="0.1" placeholder="e.g. 15" class="studio-input" style="margin-bottom:12px;">
+                
+                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+                    <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; font-weight:600; color:#334155; cursor:pointer;">
+                        <input type="checkbox" name="is_preview" style="width:16px; height:16px; accent-color:#10b981;">
+                        <span>Enable Free Preview</span>
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:0.9rem; font-weight:600; color:#334155; cursor:pointer;">
+                        <input type="checkbox" name="qa_enabled" checked style="width:16px; height:16px; accent-color:#10b981;">
+                        <span>Enable Q&amp;A Discussion for this lecture</span>
+                    </label>
+                </div>
+                
+                <button type="submit" class="btn-studio primary" style="padding: 8px 16px; font-size: 0.85rem;">Add Lecture</button>
             </form>
         </details>
     </div>
     {% empty %}
-    <div class="empty">No sections yet. Add your first section below.</div>
+    <div class="studio-empty-state">
+        <div class="studio-empty-icon">
+            <i data-lucide="help-circle"></i>
+        </div>
+        <div class="studio-empty-title">No sections added yet</div>
+        <div class="studio-empty-text">Add your first course section below to begin building your curriculum.</div>
+    </div>
     {% endfor %}
 
-    <!-- Add section -->
-    <div class="card" style="margin-top:12px;">
-        <form method="post" action="{% url 'trainers:section_add' course.slug %}"
-              style="display:flex; gap:10px; align-items:end;">
+    <!-- Add Section Panel -->
+    <div class="studio-card" style="margin-top:12px;">
+        <form method="post" action="{% url 'trainers:section_add' course.slug %}" class="section-add-form">
             {% csrf_token %}
-            <div style="flex:1;">
-                <label class="card-meta" for="sec-title">New section title</label>
-                <input id="sec-title" name="title" required placeholder="e.g. Getting Started"
-                       style="width:100%; padding:10px; margin-top:6px; border:1px solid var(--border); border-radius:8px;">
+            <div style="flex:1; min-width:260px;">
+                <label class="studio-label" for="sec-title">New section title</label>
+                <input id="sec-title" name="title" required placeholder="e.g. Advanced Iron Condors" class="studio-input" style="margin-bottom:0;">
             </div>
-            <button type="submit" class="btn">+ Add section</button>
+            <button type="submit" class="btn-studio primary">
+                <i data-lucide="plus" style="width:18px; height:18px;"></i>
+                <span>Add section</span>
+            </button>
         </form>
     </div>
 </div>

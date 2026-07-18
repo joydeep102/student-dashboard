@@ -288,6 +288,7 @@ def _apply_lecture_fields(lecture, post):
     lecture.title = (post.get("title") or lecture.title).strip()
     lecture.youtube_id = (post.get("youtube_id") or "").strip()
     lecture.is_preview = post.get("is_preview") == "on"
+    lecture.qa_enabled = post.get("qa_enabled") == "on"
     lecture.description = (post.get("description") or "").strip()
     try:
         minutes = float(post.get("duration_min") or 0)

@@ -19,6 +19,8 @@ from .models import (
     Plan,
     RecordedCourse,
     Section,
+    LectureQuestion,
+    LectureReply,
 )
 
 User = get_user_model()
@@ -590,3 +592,45 @@ class WebhookTests(BaseData):
             content_type="application/json", HTTP_X_RAZORPAY_SIGNATURE="bad",
         )
         self.assertEqual(res.status_code, 400)
+
+
+class LectureQATests(TestCase):
+    def setUp(self):
+        self.instructor = User.objects.create_user(
+            email="i@test.com", password="pw12345!", role="instructor"
+        )
+        self.student = User.objects.create_user(
+            email="s@test.com", password="pw12345!", role="student"
+        )
+        self.recorded_course = RecordedCourse.objects.create(
+            title="Recorded Course", instructor=self.instructor, is_published=True
+        )
+        self.section = Section.objects.create(course=self.recorded_course, title="Sec 1")
+        self.lecture = Lecture.objects.create(section=self.section, title="Lec 1", youtube_id="y1234567890")
+
+        # Enroll student
+        CourseEnrollment.objects.create(student=self.student, course=self.recorded_course)
+
+    def test_student_can_ask_question(self):
+        self.client.force_login(self.student)
+        url = reverse("courses:add_question", kwargs={"slug": self.recorded_course.slug, "pk": self.lecture.pk})
+        res = self.client.post(url, {"text": "What is options trading?"})
+        self.assertEqual(res.status_code, 302)
+        self.assertEqual(LectureQuestion.objects.count(), 1)
+        q = LectureQuestion.objects.first()
+        self.assertEqual(q.text, "What is options trading?")
+        self.assertEqual(q.student, self.student)
+
+    def test_trainer_and_student_can_reply(self):
+        q = LectureQuestion.objects.create(
+            student=self.student, lecture=self.lecture, text="First Question"
+        )
+        self.client.force_login(self.instructor)
+        url = reverse("courses:add_reply", kwargs={"slug": self.recorded_course.slug, "qpk": q.pk})
+        res = self.client.post(url, {"text": "This is an answer."})
+        self.assertEqual(res.status_code, 302)
+        self.assertEqual(LectureReply.objects.count(), 1)
+        r = LectureReply.objects.first()
+        self.assertEqual(r.text, "This is an answer.")
+        self.assertEqual(r.user, self.instructor)
+

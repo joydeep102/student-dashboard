@@ -30,4 +30,6 @@ urlpatterns = [
     path("courses/<slug:slug>/section/<int:sid>/lecture/add/", course_studio.lecture_add, name="lecture_add"),
     path("courses/<slug:slug>/lecture/<int:lid>/edit/", course_studio.lecture_edit, name="lecture_edit"),
     path("courses/<slug:slug>/lecture/<int:lid>/delete/", course_studio.lecture_delete, name="lecture_delete"),
+    path("qa/", views.qa_list, name="qa_list"),
+    path("qa/<int:pk>/reply/", views.qa_reply, name="qa_reply"),
 ]

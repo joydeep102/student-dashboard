@@ -587,6 +587,10 @@ class Lecture(models.Model):
     is_preview = models.BooleanField(
         default=False, help_text="Free preview — anyone can watch without buying."
     )
+    qa_enabled = models.BooleanField(
+        default=True,
+        help_text="Allow students to post questions and discussion under this lecture.",
+    )
     order = models.PositiveIntegerField(default=0)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -785,3 +789,50 @@ class Payout(models.Model):
         if self.paid_at is None:
             self.paid_at = timezone.now()
         self.save(update_fields=["status", "paid_at"])
+
+
+class LectureQuestion(models.Model):
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="lecture_questions",
+    )
+    lecture = models.ForeignKey(
+        Lecture,
+        on_delete=models.CASCADE,
+        related_name="questions",
+    )
+    text = models.TextField(blank=True)
+    attachment = models.FileField(upload_to="qa_attachments/", blank=True, null=True)
+    voice_message = models.FileField(upload_to="qa_voices/", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.student} on {self.lecture.title}"
+
+
+class LectureReply(models.Model):
+    question = models.ForeignKey(
+        LectureQuestion,
+        on_delete=models.CASCADE,
+        related_name="replies",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="lecture_replies",
+    )
+    text = models.TextField(blank=True)
+    attachment = models.FileField(upload_to="qa_attachments/", blank=True, null=True)
+    voice_message = models.FileField(upload_to="qa_voices/", blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Reply by {self.user} on {self.question}"
+
