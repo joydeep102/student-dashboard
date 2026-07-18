@@ -1,23 +1,12 @@
-from django.conf import settings
 from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from . import google_login, views
-from .forms import EmailAuthenticationForm
 
 app_name = "accounts"
 
 urlpatterns = [
-    path(
-        "login/",
-        auth_views.LoginView.as_view(
-            template_name="accounts/login.html",
-            redirect_authenticated_user=True,
-            authentication_form=EmailAuthenticationForm,
-            extra_context={"google_enabled": settings.GOOGLE_LOGIN_ENABLED},
-        ),
-        name="login",
-    ),
+    path("login/", views.LoginView.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("password/forgot/", views.forgot_password, name="forgot_password"),
     path("profile/", views.profile, name="profile"),

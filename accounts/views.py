@@ -12,6 +12,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 
 from . import google_config
+from .forms import EmailAuthenticationForm
 from .gmail_send import GmailUnavailable, send_email
 
 log = logging.getLogger(__name__)
@@ -61,6 +62,21 @@ def forgot_password(request):
 
 
 MAX_GOOGLE_CLIENTS = 5
+
+
+class LoginView(auth_views.LoginView):
+    """Login page. Resolves the Google button per-request so it reflects the
+    live client assignment in secrets/google_clients.json (an import-time
+    setting would miss clients added later from the admin page)."""
+
+    template_name = "accounts/login.html"
+    redirect_authenticated_user = True
+    authentication_form = EmailAuthenticationForm
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["google_enabled"] = google_config.is_service_enabled("login")
+        return ctx
 
 
 class PasswordChangeView(SuccessMessageMixin, auth_views.PasswordChangeView):
