@@ -53,6 +53,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Must come first — collapses comma-duplicated Origin headers that some
+    # front-end proxies (e.g. OpenLiteSpeed) produce, before CSRF runs.
+    "config.middleware.DedupeOriginMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # WhiteNoise serves static files in production (no separate web server needed).
     "whitenoise.middleware.WhiteNoiseMiddleware",
